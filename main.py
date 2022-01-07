@@ -1,2 +1,4 @@
+import bpparse
+
 if __name__ == "__main__":
-    print("dog")
+    bpparse.get_songs('BlackPlayer Free Track Statistics.bpstat')
