@@ -18,7 +18,7 @@ from sqlalchemy.orm import declarative_base, Session
 logger = logging.getLogger(__name__)
 
 # setup/config
-engine = create_engine("sqlite+pysqlite:///songs.db", echo=True, future=True)
+engine = create_engine("sqlite+pysqlite:///data\\songs.db", echo=True, future=True)
 Base = declarative_base()
 
 
