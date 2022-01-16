@@ -22,9 +22,6 @@ def copy_and_process_song(song, output_folder='tmp'):
 
     If the Song object is not an mp3 file or has been trimmed, the song is processed using
     pydub and requires ffmpeg/libav.
-
-    In addition, this function also checks for semicolons in specific ID3 tags in the output mp3.
-    This check is used to prevent .bpstat files from failing to import.
     """
     _, file_extension = os.path.splitext(song.location)
     output_path = os.path.join(output_folder, song.persistent_id + ".mp3")
@@ -48,10 +45,17 @@ def copy_and_process_song(song, output_folder='tmp'):
     except FileNotFoundError as e:
         logging.error(f"Couldn't find {song.location}")
 
-    out_file = load(output_path)
+def strip_semicolons(song_path):
+    """
+    Replace semicolons in specific ID3 tags in the specified song path.
+
+    This check is used to prevent .bpstat files from failing to import.
+    """
+    out_file = load(song_path)
     for field in [out_file.tag.artist, out_file.tag.title, out_file.tag.album]:
         field = field.replace(";", "")
-    out_file.tag.save()
+
+    out_file.tag.save(version=(2,3,0))
 
 def add_to_bpstat(song, target_folder, bpstat_path):
     """
