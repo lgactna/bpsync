@@ -46,9 +46,11 @@ class StoredSong(Base):
         self.last_playcount += delta
 
 
-def create_db():
+def create_db(songs):
     Base.metadata.create_all(engine)
-
+    new_songs = [StoredSong(id=song.persistent_id, last_playcount=song.play_count)
+                for song in songs]
+    commit_changes()
 
 def add_songs(songs):
     """Commit an array of StoredSongs to the database."""
@@ -58,5 +60,6 @@ def add_songs(songs):
 
 
 def commit_changes():
+    """Commit changes to database."""
     with Session(engine) as session:
         session.commit()
