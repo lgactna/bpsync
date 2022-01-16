@@ -19,6 +19,14 @@ LIBRARY = 'iTunes_Music_Library.xml'
 DATA_FOLDER = 'data'
 SONGS_FOLDER = 'tmp'
 
+TARGET_FOLDER = '/storage/sdcard1/imported-music/'
+
+# TODO: Separate functions for each part of the process
+#       - Calculating accessible files by filepath, removing inaccessible Song objects
+#       - Calculating files that need to be trimmed
+#       - Strip ID3 of semicolons
+#       - Create db
+#       - Calculate deltas
 
 def preprocess(lib):
     for track_id, song in lib.songs.items():
@@ -83,10 +91,10 @@ if __name__ == "__main__":
     output = ""
     for _, song in lib.songs.items():
         bpsong = bpparse.BPSong.from_song(song)
-        if bpsong.total_plays == 0:
-            continue
+        #if bpsong.total_plays == 0:
+            #continue
 
-        output += bpsong.as_bpstat_line() + "\n"
+        output += bpsong.as_bpstat_line(TARGET_FOLDER) + "\n"
 
     bpstat_name = datetime.now().strftime("%Y-%m-%d %H-%M-%S (new).bpstat")
     bpstat_path = os.path.join(DATA_FOLDER, bpstat_name)
