@@ -32,13 +32,14 @@ if __name__ == "__main__":
     lib = Library('iTunes_Music_Library.xml')
     # TODO: dict with key:value of persistent id:Song
     
+    bpstat_name = datetime.now().strftime("%Y-%m-%d %H-%M-%S (new).bpstat")
+    bpstat_path = os.path.join(DATA_FOLDER, bpstat_name)
+
+    os.makedirs(DATA_FOLDER, exist_ok=True)
+    os.makedirs(SONGS_FOLDER, exist_ok=True)
     # bpstat generation and processing can happen at the same time
     for _, song in lib.songs.items():
-        #bpsynctools.copy_and_process_song(song)
-
-        bpstat_name = datetime.now().strftime("%Y-%m-%d %H-%M-%S (new).bpstat")
-        bpstat_path = os.path.join(DATA_FOLDER, bpstat_name)
-
+        bpsynctools.copy_and_process_song(song)
         bpsynctools.add_to_bpstat(song, TARGET_FOLDER, bpstat_path)
 
     # Create database with new songs
