@@ -2,3 +2,4 @@ git+https://github.com/lgactna/libpytunes.git
 pydub
 eyed3
 sqlalchemy
+fbs
