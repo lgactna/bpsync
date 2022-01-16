@@ -91,8 +91,6 @@ if __name__ == "__main__":
     output = ""
     for _, song in lib.songs.items():
         bpsong = bpparse.BPSong.from_song(song)
-        #if bpsong.total_plays == 0:
-            #continue
 
         output += bpsong.as_bpstat_line(TARGET_FOLDER) + "\n"
 

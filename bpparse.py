@@ -1,6 +1,7 @@
 import time
 from datetime import datetime
 import logging
+import os
 
 logger = logging.getLogger(__name__)
 
@@ -32,18 +33,27 @@ class BPSong:
         album = song.album
         filepath = song.persistent_id + ".mp3"  # This is assumed
         addition_date = time.mktime(song.date_added) * 1000  # Make conversion back into milliseconds
-        last_played = time.mktime(song.lastplayed) * 1000 if song.lastplayed else 0
+        last_played = time.mktime(song.lastplayed) * 1000 if song.lastplayed else 1000000000  # Random time in 1970 supported by OS
 
         # No way to determine plays this month from XML data
         return cls(total_plays, 0, title, artist, album, filepath, addition_date, last_played)
 
-    def as_bpstat_line(self):
+    def as_bpstat_line(self, path):
+        """Write as bpstat line with specified prepended filepath."""
         # Convert back to timestamp in milliseconds
         addition_date = int(datetime.timestamp(self.addition_date) * 1000)
-        last_played = int(datetime.timestamp(self.last_played) * 1000)
+        last_played = 0
+
+        # Support for songs that have never been played before to be exported to bpstat
+        if self.total_plays == 0:
+            last_played = addition_date
+        else:
+            last_played = int(datetime.timestamp(self.last_played) * 1000)
+
+        path = os.path.join(path, self.filepath)
 
         return f"{self.total_plays};{self.plays_this_month};{self.title};{self.artist};" \
-               f"{self.album};{self.filepath};{addition_date};{last_played}"
+               f"{self.album};{path};{addition_date};{last_played}"
 
 
 def get_songs(filepath):
