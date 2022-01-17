@@ -2,9 +2,67 @@ from PySide6.QtWidgets import *
 from PySide6.QtCore import *
 from PySide6.QtGui import *
 
-from PySide6 import QtCore
+from PySide6 import QtCore, QtWidgets
 
 from random import randint, choice
+
+class CheckBoxDelegate(QtWidgets.QItemDelegate):
+    """
+    A delegate that places a fully functioning QCheckBox cell of the column to which it's applied.
+
+    From https://stackoverflow.com/questions/17748546/pyqt-column-of-checkboxes-in-a-qtableview
+    """
+    def __init__(self, parent):
+        QtWidgets.QItemDelegate.__init__(self, parent)
+
+    def createEditor(self, parent, option, index):
+        """
+        Important, otherwise an editor is created if the user clicks in this cell.
+        """
+        return None
+
+    def paint(self, painter, option, index):
+        """
+        Paint a checkbox without the label.
+        """
+        self.drawCheck(painter, option, option.rect, QtCore.Qt.Unchecked if int(index.data()) == 0 else QtCore.Qt.Checked)
+
+    def editorEvent(self, event, model, option, index):
+        '''
+        Change the data in the model and the state of the checkbox
+        if the user presses the left mousebutton and this cell is editable. Otherwise do nothing.
+        '''
+
+        if not int(index.flags() & QtCore.Qt.ItemIsEditable) > 0:
+            print(int(index.flags()))
+            return False
+
+        if event.type() == QtCore.QEvent.Type.MouseButtonRelease and event.button() == Qt.MouseButton.LeftButton:
+            # Change the checkbox-state
+            self.setModelData(None, model, index)
+            return True
+
+        return False
+
+
+    def setModelData (self, editor, model, index):
+        '''
+        Invert checkbox on click.
+
+        Affects proxy: 
+        https://forum.qt.io/topic/121874/how-to-access-source-model-methods-from-proxy-model,
+        https://doc.qt.io/qt-5/qabstractproxymodel.html#mapToSource
+        '''
+        #print(index.row(), index.column())
+
+        source_index = self.parent().proxy.mapToSource(index)
+        data = self.parent().table_model.data(source_index, Qt.DisplayRole)
+        data = int(not bool(data)) # Invert 1 -> 0 or 0 -> 1
+
+        self.parent().table_model.setData(source_index, data, Qt.EditRole)
+        #self.parent().table_model.array_data[source_index.row()][source_index.column()] = not self.parent().table_model.array_data[source_index.row()][source_index.column()]
+        #self.parent().model().layoutChanged.emit()
+
 
 class SortFilterProxyModel(QSortFilterProxyModel):
     def __init__(self, *args, **kwargs):
@@ -50,7 +108,7 @@ class SongTableModel(QAbstractTableModel):
         """
         if index.column() == 1 or index.column() == 2:
             #return QAbstractTableModel.flags(index) | Qt.ItemIsUserCheckable
-            return Qt.ItemIsEnabled | Qt.ItemIsSelectable | Qt.ItemIsUserCheckable
+            return Qt.ItemIsEnabled | Qt.ItemIsSelectable | Qt.ItemIsUserCheckable | Qt.ItemIsEditable
         else:
             #return QAbstractTableModel.flags(index)
             return Qt.ItemIsEnabled | Qt.ItemIsSelectable
@@ -75,6 +133,14 @@ class SongTableModel(QAbstractTableModel):
             return self.header_data[col]
         return None
 
+    def setData(self, index, value, role = Qt.EditRole):     
+        if role == Qt.EditRole:             
+            self.array_data[index.row()][index.column()] = value
+            self.dataChanged.emit(index, index, ())             
+            return True         
+        else:             
+            return False
+
     def sort(self, Ncol, order):
         """
         Sort table by given column number.
@@ -91,11 +157,11 @@ class SongView(QTableView):
         super().__init__()
 
         self.headers = ['a', 'b', 'c', 'd', 'e']
-        self.data = [[1, None, None, 2, 3],
-        [3, None, None, "ab", 3],
-        [4, None, None, 2, "sdf"],
-        [2, None, None, "sdfd", 3],
-        [5, None, None, 2, "sdfd"]]
+        self.data = [[1, 1, 0, 2, 3],
+        [3, 1, 0, "ab", 3],
+        [4, 1, 0, 2, "sdf"],
+        [2, 1, 0, "sdfd", 3],
+        [5, 1, 0, 2, "sdfd"]]
 
         self.table_model = SongTableModel(self.data, self.headers, self)
         
@@ -104,6 +170,16 @@ class SongView(QTableView):
 
         self.setModel(self.proxy)
         self.setSortingEnabled(True)
+
+        #Checkbox stuff
+        delegate = CheckBoxDelegate(self)
+        self.setItemDelegateForColumn(1, delegate)
+        '''
+        for row in range(4):
+            for column in range(3):
+                index = self.table_model.index(row, column, QModelIndex())
+                self.table_model.setData(index, 1)
+        '''
 
 
 class Widget(QWidget):
