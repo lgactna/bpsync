@@ -17,8 +17,7 @@ from PySide6.QtGui import (QBrush, QColor, QConicalGradient, QCursor,
     QPalette, QPixmap, QRadialGradient, QTransform)
 from PySide6.QtWidgets import (QApplication, QGridLayout, QGroupBox, QHBoxLayout,
     QHeaderView, QLabel, QLineEdit, QPushButton,
-    QSizePolicy, QTableWidget, QTableWidgetItem, QVBoxLayout,
-    QWidget)
+    QSizePolicy, QTableView, QVBoxLayout, QWidget)
 
 class Ui_FirstTimeWindow(object):
     def setupUi(self, FirstTimeWindow):
@@ -119,59 +118,15 @@ class Ui_FirstTimeWindow(object):
 
         self.verticalLayout_3.addLayout(self.horizontalLayout_4)
 
-        self.songs_table = QTableWidget(FirstTimeWindow)
-        if (self.songs_table.columnCount() < 9):
-            self.songs_table.setColumnCount(9)
-        __qtablewidgetitem = QTableWidgetItem()
-        self.songs_table.setHorizontalHeaderItem(0, __qtablewidgetitem)
-        __qtablewidgetitem1 = QTableWidgetItem()
-        self.songs_table.setHorizontalHeaderItem(1, __qtablewidgetitem1)
-        __qtablewidgetitem2 = QTableWidgetItem()
-        self.songs_table.setHorizontalHeaderItem(2, __qtablewidgetitem2)
-        __qtablewidgetitem3 = QTableWidgetItem()
-        self.songs_table.setHorizontalHeaderItem(3, __qtablewidgetitem3)
-        __qtablewidgetitem4 = QTableWidgetItem()
-        self.songs_table.setHorizontalHeaderItem(4, __qtablewidgetitem4)
-        __qtablewidgetitem5 = QTableWidgetItem()
-        self.songs_table.setHorizontalHeaderItem(5, __qtablewidgetitem5)
-        __qtablewidgetitem6 = QTableWidgetItem()
-        self.songs_table.setHorizontalHeaderItem(6, __qtablewidgetitem6)
-        __qtablewidgetitem7 = QTableWidgetItem()
-        self.songs_table.setHorizontalHeaderItem(7, __qtablewidgetitem7)
-        __qtablewidgetitem8 = QTableWidgetItem()
-        self.songs_table.setHorizontalHeaderItem(8, __qtablewidgetitem8)
-        if (self.songs_table.rowCount() < 1):
-            self.songs_table.setRowCount(1)
-        __qtablewidgetitem9 = QTableWidgetItem()
-        self.songs_table.setVerticalHeaderItem(0, __qtablewidgetitem9)
-        __qtablewidgetitem10 = QTableWidgetItem()
-        self.songs_table.setItem(0, 0, __qtablewidgetitem10)
-        __qtablewidgetitem11 = QTableWidgetItem()
-        self.songs_table.setItem(0, 1, __qtablewidgetitem11)
-        __qtablewidgetitem12 = QTableWidgetItem()
-        self.songs_table.setItem(0, 2, __qtablewidgetitem12)
-        __qtablewidgetitem13 = QTableWidgetItem()
-        self.songs_table.setItem(0, 3, __qtablewidgetitem13)
-        __qtablewidgetitem14 = QTableWidgetItem()
-        self.songs_table.setItem(0, 4, __qtablewidgetitem14)
-        __qtablewidgetitem15 = QTableWidgetItem()
-        self.songs_table.setItem(0, 5, __qtablewidgetitem15)
-        __qtablewidgetitem16 = QTableWidgetItem()
-        self.songs_table.setItem(0, 6, __qtablewidgetitem16)
-        __qtablewidgetitem17 = QTableWidgetItem()
-        self.songs_table.setItem(0, 7, __qtablewidgetitem17)
-        __qtablewidgetitem18 = QTableWidgetItem()
-        self.songs_table.setItem(0, 8, __qtablewidgetitem18)
+        self.songs_table = QTableView(FirstTimeWindow)
         self.songs_table.setObjectName(u"songs_table")
         self.songs_table.setEnabled(False)
-        self.songs_table.horizontalHeader().setMinimumSectionSize(40)
-        self.songs_table.horizontalHeader().setDefaultSectionSize(100)
-        self.songs_table.horizontalHeader().setProperty("showSortIndicator", True)
+        self.songs_table.horizontalHeader().setMinimumSectionSize(100)
         self.songs_table.horizontalHeader().setStretchLastSection(True)
+        self.songs_table.verticalHeader().setVisible(True)
+        self.songs_table.verticalHeader().setCascadingSectionResizes(True)
         self.songs_table.verticalHeader().setMinimumSectionSize(20)
-        self.songs_table.verticalHeader().setDefaultSectionSize(20)
-        self.songs_table.verticalHeader().setProperty("showSortIndicator", False)
-        self.songs_table.verticalHeader().setStretchLastSection(False)
+        self.songs_table.verticalHeader().setStretchLastSection(True)
 
         self.verticalLayout_3.addWidget(self.songs_table)
 
@@ -211,15 +166,15 @@ class Ui_FirstTimeWindow(object):
 
         self.horizontalLayout_2.addWidget(self.label_10)
 
-        self.db_path_lineedit = QLineEdit(self.groupBox)
-        self.db_path_lineedit.setObjectName(u"db_path_lineedit")
+        self.data_path_lineedit = QLineEdit(self.groupBox)
+        self.data_path_lineedit.setObjectName(u"data_path_lineedit")
 
-        self.horizontalLayout_2.addWidget(self.db_path_lineedit)
+        self.horizontalLayout_2.addWidget(self.data_path_lineedit)
 
-        self.db_browse_button = QPushButton(self.groupBox)
-        self.db_browse_button.setObjectName(u"db_browse_button")
+        self.data_browse_button = QPushButton(self.groupBox)
+        self.data_browse_button.setObjectName(u"data_browse_button")
 
-        self.horizontalLayout_2.addWidget(self.db_browse_button)
+        self.horizontalLayout_2.addWidget(self.data_browse_button)
 
 
         self.verticalLayout_2.addLayout(self.horizontalLayout_2)
@@ -304,56 +259,13 @@ class Ui_FirstTimeWindow(object):
         self.tracks_error_label.setText(QCoreApplication.translate("FirstTimeWindow", u"Please load an XML!", None))
         self.label_8.setText(QCoreApplication.translate("FirstTimeWindow", u"Songs to copy and prepare for sync", None))
         self.label_18.setText(QCoreApplication.translate("FirstTimeWindow", u"Search", None))
-        ___qtablewidgetitem = self.songs_table.horizontalHeaderItem(0)
-        ___qtablewidgetitem.setText(QCoreApplication.translate("FirstTimeWindow", u"Track ID", None));
-        ___qtablewidgetitem1 = self.songs_table.horizontalHeaderItem(1)
-        ___qtablewidgetitem1.setText(QCoreApplication.translate("FirstTimeWindow", u"Copy?", None));
-        ___qtablewidgetitem2 = self.songs_table.horizontalHeaderItem(2)
-        ___qtablewidgetitem2.setText(QCoreApplication.translate("FirstTimeWindow", u"Track?", None));
-        ___qtablewidgetitem3 = self.songs_table.horizontalHeaderItem(3)
-        ___qtablewidgetitem3.setText(QCoreApplication.translate("FirstTimeWindow", u"Title", None));
-        ___qtablewidgetitem4 = self.songs_table.horizontalHeaderItem(4)
-        ___qtablewidgetitem4.setText(QCoreApplication.translate("FirstTimeWindow", u"Artist", None));
-        ___qtablewidgetitem5 = self.songs_table.horizontalHeaderItem(5)
-        ___qtablewidgetitem5.setText(QCoreApplication.translate("FirstTimeWindow", u"Album", None));
-        ___qtablewidgetitem6 = self.songs_table.horizontalHeaderItem(6)
-        ___qtablewidgetitem6.setText(QCoreApplication.translate("FirstTimeWindow", u"Playcount", None));
-        ___qtablewidgetitem7 = self.songs_table.horizontalHeaderItem(7)
-        ___qtablewidgetitem7.setText(QCoreApplication.translate("FirstTimeWindow", u"Filepath", None));
-        ___qtablewidgetitem8 = self.songs_table.horizontalHeaderItem(8)
-        ___qtablewidgetitem8.setText(QCoreApplication.translate("FirstTimeWindow", u"Trimmed?", None));
-        ___qtablewidgetitem9 = self.songs_table.verticalHeaderItem(0)
-        ___qtablewidgetitem9.setText(QCoreApplication.translate("FirstTimeWindow", u"Row1", None));
-
-        __sortingEnabled = self.songs_table.isSortingEnabled()
-        self.songs_table.setSortingEnabled(False)
-        ___qtablewidgetitem10 = self.songs_table.item(0, 0)
-        ___qtablewidgetitem10.setText(QCoreApplication.translate("FirstTimeWindow", u"25", None));
-        ___qtablewidgetitem11 = self.songs_table.item(0, 1)
-        ___qtablewidgetitem11.setText(QCoreApplication.translate("FirstTimeWindow", u"N", None));
-        ___qtablewidgetitem12 = self.songs_table.item(0, 2)
-        ___qtablewidgetitem12.setText(QCoreApplication.translate("FirstTimeWindow", u"N", None));
-        ___qtablewidgetitem13 = self.songs_table.item(0, 3)
-        ___qtablewidgetitem13.setText(QCoreApplication.translate("FirstTimeWindow", u"September", None));
-        ___qtablewidgetitem14 = self.songs_table.item(0, 4)
-        ___qtablewidgetitem14.setText(QCoreApplication.translate("FirstTimeWindow", u"Earth, Wind & Fire", None));
-        ___qtablewidgetitem15 = self.songs_table.item(0, 5)
-        ___qtablewidgetitem15.setText(QCoreApplication.translate("FirstTimeWindow", u"September", None));
-        ___qtablewidgetitem16 = self.songs_table.item(0, 6)
-        ___qtablewidgetitem16.setText(QCoreApplication.translate("FirstTimeWindow", u"15", None));
-        ___qtablewidgetitem17 = self.songs_table.item(0, 7)
-        ___qtablewidgetitem17.setText(QCoreApplication.translate("FirstTimeWindow", u"D:\\Music\\september.mp3", None));
-        ___qtablewidgetitem18 = self.songs_table.item(0, 8)
-        ___qtablewidgetitem18.setText(QCoreApplication.translate("FirstTimeWindow", u"Yes (0:00.012 - 3:36.150)", None));
-        self.songs_table.setSortingEnabled(__sortingEnabled)
-
         self.groupBox.setTitle(QCoreApplication.translate("FirstTimeWindow", u"Options", None))
-        self.label_9.setText(QCoreApplication.translate("FirstTimeWindow", u"mp3 folder destination", None))
+        self.label_9.setText(QCoreApplication.translate("FirstTimeWindow", u"mp3 folder directory", None))
         self.mp3_browse_button.setText(QCoreApplication.translate("FirstTimeWindow", u"Browse", None))
         self.label_16.setText(QCoreApplication.translate("FirstTimeWindow", u"Any mp3s you have selected to be copied and renamed above will be sent to this folder.", None))
-        self.label_10.setText(QCoreApplication.translate("FirstTimeWindow", u"Local DB filepath", None))
-        self.db_browse_button.setText(QCoreApplication.translate("FirstTimeWindow", u"Browse", None))
-        self.label_17.setText(QCoreApplication.translate("FirstTimeWindow", u"The location of the local database used to track changes to playcount between the XML and .bpstat.", None))
+        self.label_10.setText(QCoreApplication.translate("FirstTimeWindow", u"Data directory", None))
+        self.data_browse_button.setText(QCoreApplication.translate("FirstTimeWindow", u"Browse", None))
+        self.label_17.setText(QCoreApplication.translate("FirstTimeWindow", u"The location of the local database used to track changes to playcount between the XML and .bpstat, as well as the generated .bpstat, will go here.", None))
         self.groupBox_2.setTitle(QCoreApplication.translate("FirstTimeWindow", u".bpstat generation", None))
         self.label_12.setText(QCoreApplication.translate("FirstTimeWindow", u"This program works by assuming all songs will be written to one flat folder, with no subdirectories and (essentially) randomized unique filenames for each mp3. To generate the associated .bpstat, you must know the full Android filepath of the folder your music will be stored in in advance.", None))
         self.label_13.setText(QCoreApplication.translate("FirstTimeWindow", u"Common root folders for music storage are:", None))

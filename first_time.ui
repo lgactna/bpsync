@@ -127,129 +127,28 @@
     </layout>
    </item>
    <item>
-    <widget class="QTableWidget" name="songs_table">
+    <widget class="QTableView" name="songs_table">
      <property name="enabled">
       <bool>false</bool>
      </property>
-     <attribute name="horizontalHeaderDefaultSectionSize">
-      <number>100</number>
-     </attribute>
      <attribute name="horizontalHeaderMinimumSectionSize">
-      <number>40</number>
-     </attribute>
-     <attribute name="horizontalHeaderShowSortIndicator" stdset="0">
-      <bool>true</bool>
+      <number>100</number>
      </attribute>
      <attribute name="horizontalHeaderStretchLastSection">
       <bool>true</bool>
      </attribute>
-     <attribute name="verticalHeaderDefaultSectionSize">
-      <number>20</number>
+     <attribute name="verticalHeaderVisible">
+      <bool>true</bool>
+     </attribute>
+     <attribute name="verticalHeaderCascadingSectionResizes">
+      <bool>true</bool>
      </attribute>
      <attribute name="verticalHeaderMinimumSectionSize">
       <number>20</number>
      </attribute>
-     <attribute name="verticalHeaderShowSortIndicator" stdset="0">
-      <bool>false</bool>
-     </attribute>
      <attribute name="verticalHeaderStretchLastSection">
-      <bool>false</bool>
+      <bool>true</bool>
      </attribute>
-     <row>
-      <property name="text">
-       <string>Row1</string>
-      </property>
-     </row>
-     <column>
-      <property name="text">
-       <string>Track ID</string>
-      </property>
-     </column>
-     <column>
-      <property name="text">
-       <string>Copy?</string>
-      </property>
-     </column>
-     <column>
-      <property name="text">
-       <string>Track?</string>
-      </property>
-     </column>
-     <column>
-      <property name="text">
-       <string>Title</string>
-      </property>
-     </column>
-     <column>
-      <property name="text">
-       <string>Artist</string>
-      </property>
-     </column>
-     <column>
-      <property name="text">
-       <string>Album</string>
-      </property>
-     </column>
-     <column>
-      <property name="text">
-       <string>Playcount</string>
-      </property>
-     </column>
-     <column>
-      <property name="text">
-       <string>Filepath</string>
-      </property>
-     </column>
-     <column>
-      <property name="text">
-       <string>Trimmed?</string>
-      </property>
-     </column>
-     <item row="0" column="0">
-      <property name="text">
-       <string>25</string>
-      </property>
-     </item>
-     <item row="0" column="1">
-      <property name="text">
-       <string>N</string>
-      </property>
-     </item>
-     <item row="0" column="2">
-      <property name="text">
-       <string>N</string>
-      </property>
-     </item>
-     <item row="0" column="3">
-      <property name="text">
-       <string>September</string>
-      </property>
-     </item>
-     <item row="0" column="4">
-      <property name="text">
-       <string>Earth, Wind &amp; Fire</string>
-      </property>
-     </item>
-     <item row="0" column="5">
-      <property name="text">
-       <string>September</string>
-      </property>
-     </item>
-     <item row="0" column="6">
-      <property name="text">
-       <string>15</string>
-      </property>
-     </item>
-     <item row="0" column="7">
-      <property name="text">
-       <string>D:\Music\september.mp3</string>
-      </property>
-     </item>
-     <item row="0" column="8">
-      <property name="text">
-       <string>Yes (0:00.012 - 3:36.150)</string>
-      </property>
-     </item>
     </widget>
    </item>
    <item>
@@ -263,7 +162,7 @@
         <item>
          <widget class="QLabel" name="label_9">
           <property name="text">
-           <string>mp3 folder destination</string>
+           <string>mp3 folder directory</string>
           </property>
          </widget>
         </item>
@@ -291,15 +190,15 @@
         <item>
          <widget class="QLabel" name="label_10">
           <property name="text">
-           <string>Local DB filepath</string>
+           <string>Data directory</string>
           </property>
          </widget>
         </item>
         <item>
-         <widget class="QLineEdit" name="db_path_lineedit"/>
+         <widget class="QLineEdit" name="data_path_lineedit"/>
         </item>
         <item>
-         <widget class="QPushButton" name="db_browse_button">
+         <widget class="QPushButton" name="data_browse_button">
           <property name="text">
            <string>Browse</string>
           </property>
@@ -310,7 +209,7 @@
       <item>
        <widget class="QLabel" name="label_17">
         <property name="text">
-         <string>The location of the local database used to track changes to playcount between the XML and .bpstat.</string>
+         <string>The location of the local database used to track changes to playcount between the XML and .bpstat, as well as the generated .bpstat, will go here.</string>
         </property>
        </widget>
       </item>
