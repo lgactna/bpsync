@@ -29,15 +29,75 @@ TARGET_FOLDER = '/storage/sdcard1/imported-music/'
 #       - Calculate deltas
 
 from first_time import Ui_FirstTimeWindow
-from PySide6 import QtWidgets, QtCore
+from PySide6 import QtWidgets, QtCore, QtGui
 import sys
 
 class FirstTimeWindow(QtWidgets.QWidget,Ui_FirstTimeWindow):
     def __init__(self):
         super().__init__()
-
+        
         self.setWindowModality(QtCore.Qt.ApplicationModal) 
         self.setupUi(self)
+
+        self.program_path = QtCore.QDir.currentPath()
+
+        # Prepopulate fields
+        self.mp3_path_lineedit.setText('/tmp')
+        self.data_path_lineedit.setText('/data')
+
+        # Signals and slots
+        self.xml_browse_button.clicked.connect(self.xml_open_prompt)
+        self.xml_load_button.clicked.connect(self.update_with_xml)
+        self.mp3_browse_button.clicked.connect(self.mp3_save_prompt)
+        self.data_browse_button.clicked.connect(self.data_save_prompt)
+
+    def xml_open_prompt(self):
+        file_name, _ = QtWidgets.QFileDialog.getOpenFileName(self, "Open XML", self.program_path,
+                "XML (*.xml);;All Files (*)")
+        if file_name:
+            self.xml_path_lineedit.setText(file_name)
+
+    def mp3_save_prompt(self):
+        directory = QtWidgets.QFileDialog.getExistingDirectory(self, 
+                "Select processed mp3 directory", self.program_path)
+        if directory:
+            self.mp3_path_lineedit.setText(directory)
+
+    def data_save_prompt(self):
+        directory = QtWidgets.QFileDialog.getExistingDirectory(self, 
+                "Select data directory", self.program_path)
+        if directory:
+            self.data_path_lineedit.setText(directory)
+
+    def update_with_xml(self):
+        # get contents of lineedit
+        xml_path = xml_path_lineedit.text()
+        # generate library from it
+        lib = Library(xml_path)
+        # update table from it
+        '''
+        fields:
+        - track ID
+        - copy?
+        - track for syncing?
+        - title
+        - artist
+        - album
+        - playcount
+        - filepath
+        - trimmed? y/n (x:xx.xxx - x:xx.xxx)
+        '''
+
+        #sample code
+        self.sample_output_table.setColumnCount(0)
+        self.sample_output_table.setRowCount(0)
+        for header_index in range(0, len(data[0])):
+            self.sample_output_table.insertColumn(header_index)
+            self.sample_output_table.setHorizontalHeaderItem(header_index, QtWidgets.QTableWidgetItem(data[0][header_index]))
+        for row_number in range(0, len(data[1])):
+            self.sample_output_table.insertRow(row_number)
+            for column_number in range(0, len(data[0])):
+                self.sample_output_table.setItem(row_number, column_number, QtWidgets.QTableWidgetItem(data[1][row_number][column_number]))
 
 app = QtWidgets.QApplication(sys.argv)
 
