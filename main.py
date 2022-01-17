@@ -39,12 +39,13 @@ if __name__ == "__main__":
     os.makedirs(SONGS_FOLDER, exist_ok=True)
     # bpstat generation and processing can happen at the same time
     for _, song in lib.songs.items():
-        bpsynctools.copy_and_process_song(song)
+        #bpsynctools.copy_and_process_song(song)
         bpsynctools.add_to_bpstat(song, TARGET_FOLDER, bpstat_path)
 
     # Create database with new songs
     song_arr = [song for _, song in lib.songs.items()]
-    models.create_db(song_arr)
+    models.create_db()
+    models.add_libpy_songs(song_arr)
 
     #---------
     # bpstat already exists? Get both the XML and the bpstat file

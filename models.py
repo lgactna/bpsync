@@ -18,6 +18,7 @@ from sqlalchemy.orm import declarative_base, Session
 logger = logging.getLogger(__name__)
 
 # setup/config
+# TODO: un-hardcode the database location
 engine = create_engine("sqlite+pysqlite:///data\\songs.db", echo=True, future=True)
 Base = declarative_base()
 
@@ -46,18 +47,19 @@ class StoredSong(Base):
         self.last_playcount += delta
 
 
-def create_db(songs):
+def create_db():
+    """Create a new database from an array of libpytunes Song objects."""
     Base.metadata.create_all(engine)
-    new_songs = [StoredSong(id=song.persistent_id, last_playcount=song.play_count)
-                for song in songs]
-    commit_changes()
 
-def add_songs(songs):
-    """Commit an array of StoredSongs to the database."""
+def add_libpy_songs(songs):
+    """Commit an array of libpytunes Song objects to the database."""
+    # If playcount field isn't present, it's implied to be 0
+    new_songs = [StoredSong(id=song.persistent_id, 
+                            last_playcount=song.play_count if song.play_count else 0)
+                 for song in songs]
     with Session(engine) as session:
-        session.bulk_insert_mappings(StoredSong, songs)
+        session.bulk_save_objects(new_songs)
         session.commit()
-
 
 def commit_changes():
     """Commit changes to database."""
