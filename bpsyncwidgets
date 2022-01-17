@@ -1,0 +1,148 @@
+from PySide6.QtWidgets import *
+from PySide6.QtCore import *
+from PySide6.QtGui import *
+
+from PySide6 import QtCore
+
+from random import randint, choice
+
+class SortFilterProxyModel(QSortFilterProxyModel):
+    def __init__(self, *args, **kwargs):
+        QSortFilterProxyModel.__init__(self, *args, **kwargs)
+        
+    def filterAcceptsRow(self, source_row, source_parent):
+        regex = self.filterRegularExpression()
+
+        #iterate over all columns of row
+        columns = self.parent().table_model.columnCount(self)
+        for i in range(0, columns):
+            ix = self.sourceModel().index(source_row, i, source_parent)
+            if ix.isValid():
+                 text = str(self.sourceModel().data(ix, Qt.DisplayRole))
+                 if regex.match(text).hasPartialMatch() or regex.match(text).hasMatch():
+                    return True
+        return False
+
+class SongTableModel(QAbstractTableModel):
+    """
+    Adapted from the following: 
+    https://stackoverflow.com/questions/22791760/pyqt-adding-rows-to-qtableview-using-qabstracttablemodel
+    https://stackoverflow.com/questions/35305801/qt-checkboxes-in-qtableview
+
+    Also see:
+    https://stackoverflow.com/questions/15757072/user-editable-checkbox-in-qtableview
+    https://stackoverflow.com/questions/1849337/how-can-i-add-a-user-editable-checkbox-in-qtableview-using-only-qstandarditemmod
+
+    """
+    def __init__(self, data, headers, parent=None):
+        """
+        :param data: 2D array of data
+        :param headers: Array of strings.
+        :param parent: Parent of model.
+        """
+        QAbstractTableModel.__init__(self, parent)
+        self.array_data = data
+        self.header_data = headers
+    
+    def flags(self, index):
+        """
+        :param index: of type QtCore.QModelIndex
+        """
+        if index.column() == 1 or index.column() == 2:
+            #return QAbstractTableModel.flags(index) | Qt.ItemIsUserCheckable
+            return Qt.ItemIsEnabled | Qt.ItemIsSelectable | Qt.ItemIsUserCheckable
+        else:
+            #return QAbstractTableModel.flags(index)
+            return Qt.ItemIsEnabled | Qt.ItemIsSelectable
+
+    def rowCount(self, parent):
+        return len(self.array_data)
+
+    def columnCount(self, parent):
+        if len(self.array_data) > 0: 
+            return len(self.array_data[0]) 
+        return 0
+
+    def data(self, index, role):
+        if not index.isValid():
+            return None
+        elif role != Qt.DisplayRole:
+            return None
+        return self.array_data[index.row()][index.column()]
+
+    def headerData(self, col, orientation, role):
+        if orientation == Qt.Horizontal and role == Qt.DisplayRole:
+            return self.header_data[col]
+        return None
+
+    def sort(self, Ncol, order):
+        """
+        Sort table by given column number.
+        """
+        self.emit(SIGNAL("layoutAboutToBeChanged()"))
+        self.array_data = sorted(self.array_data, key=operator.itemgetter(Ncol))       
+        if order == Qt.DescendingOrder:
+            self.array_data.reverse()
+        self.emit(SIGNAL("layoutChanged()"))
+
+class SongView(QTableView):
+    def __init__(self, *args, **kwargs):
+        # QWidget.__init__(self, *args, **kwargs)
+        super().__init__()
+
+        self.headers = ['a', 'b', 'c', 'd', 'e']
+        self.data = [[1, None, None, 2, 3],
+        [3, None, None, "ab", 3],
+        [4, None, None, 2, "sdf"],
+        [2, None, None, "sdfd", 3],
+        [5, None, None, 2, "sdfd"]]
+
+        self.table_model = SongTableModel(self.data, self.headers, self)
+        
+        self.proxy = SortFilterProxyModel(self)
+        self.proxy.setSourceModel(self.table_model)
+
+        self.setModel(self.proxy)
+        self.setSortingEnabled(True)
+
+
+class Widget(QWidget):
+    def __init__(self, *args, **kwargs):
+        QWidget.__init__(self, *args, **kwargs)
+        self.setLayout(QVBoxLayout())
+
+        tv1 = SongView()
+        self.layout().addWidget(tv1)
+
+        flayout = QFormLayout()
+        self.layout().addLayout(flayout)
+        
+        self.le = QLineEdit(self)
+        flayout.addRow("Search", self.le)
+        self.le.textChanged.connect(lambda text: tv1.proxy.setFilterRegularExpression(text))
+    def update_filter(self):
+        print(self.le.text())
+        self.proxy.setFilterRegularExpression(self.le.text())
+        self.proxy.invalidateFilter()
+        '''
+        for i in range(model.columnCount()):
+            le = QLineEdit(self)
+            flayout.addRow("column: {}".format(i), le)
+            le.textChanged.connect(lambda text, col=i:
+                                   self.proxy.setFilterByColumn(QRegularExpression(text), col))
+        '''
+        '''
+        for i in range(model.columnCount()):
+            le = QLineEdit(self)
+            flayout.addRow("column: {}".format(i), le)
+            le.textChanged.connect(lambda text, col=i:
+                                   proxy.filterRegularExpression(QRegularExpression(text)))
+        '''
+
+if __name__ == '__main__':
+    import sys
+
+    app = QApplication(sys.argv)
+    w = Widget()
+    w.show()
+    sys.exit(app.exec())
