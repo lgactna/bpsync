@@ -1,19 +1,29 @@
 <?xml version="1.0" encoding="UTF-8"?>
 <ui version="4.0">
- <class>Form</class>
- <widget class="QWidget" name="Form">
+ <class>first_time_window</class>
+ <widget class="QWidget" name="first_time_window">
   <property name="geometry">
    <rect>
     <x>0</x>
     <y>0</y>
     <width>840</width>
-    <height>669</height>
+    <height>670</height>
    </rect>
   </property>
   <property name="windowTitle">
-   <string>Form</string>
+   <string>First-time Sync Setup</string>
   </property>
   <layout class="QVBoxLayout" name="verticalLayout_3">
+   <item>
+    <widget class="QLabel" name="label_2">
+     <property name="text">
+      <string>This tool copies and renames the songs you select from the XML and creates a .bpstat for importing statistics. It also creates a local database file used for tracking playcount changes between BlackPlayer and the XML.</string>
+     </property>
+     <property name="wordWrap">
+      <bool>true</bool>
+     </property>
+    </widget>
+   </item>
    <item>
     <layout class="QHBoxLayout" name="horizontalLayout_6">
      <item>
@@ -26,17 +36,17 @@
         </widget>
        </item>
        <item>
-        <widget class="QLineEdit" name="lineEdit"/>
+        <widget class="QLineEdit" name="xml_path_lineedit"/>
        </item>
        <item>
-        <widget class="QPushButton" name="pushButton_5">
+        <widget class="QPushButton" name="xml_browse_button">
          <property name="text">
           <string>Browse</string>
          </property>
         </widget>
        </item>
        <item>
-        <widget class="QPushButton" name="pushButton">
+        <widget class="QPushButton" name="xml_load_button">
          <property name="text">
           <string>Load</string>
          </property>
@@ -45,44 +55,47 @@
        <item>
         <layout class="QGridLayout" name="gridLayout">
          <item row="0" column="1">
-          <widget class="QLabel" name="label_3">
+          <widget class="QLabel" name="tracks_copycount_label">
            <property name="text">
-            <string>1234 tracks selected for copying</string>
+            <string>0 tracks selected for copying</string>
            </property>
           </widget>
          </item>
          <item row="1" column="1">
-          <widget class="QLabel" name="label_5">
+          <widget class="QLabel" name="tracks_synccount_label">
            <property name="text">
-            <string>1234 tracks selected for tracking</string>
+            <string>0 tracks selected for syncing</string>
            </property>
           </widget>
          </item>
          <item row="1" column="0">
-          <widget class="QLabel" name="label_4">
+          <widget class="QLabel" name="tracks_totalsize_label">
            <property name="text">
-            <string>5.8 GB total size</string>
+            <string>0 MB total size</string>
            </property>
           </widget>
          </item>
          <item row="0" column="0">
-          <widget class="QLabel" name="label_2">
+          <widget class="QLabel" name="tracks_found_label">
            <property name="text">
-            <string>1234 tracks found</string>
+            <string>0 tracks found</string>
            </property>
           </widget>
          </item>
          <item row="2" column="0">
-          <widget class="QLabel" name="label_6">
+          <widget class="QLabel" name="tracks_copysize_label">
            <property name="text">
-            <string>4.8 GB to be copied</string>
+            <string>0 MB to be copied</string>
            </property>
           </widget>
          </item>
          <item row="2" column="1">
-          <widget class="QLabel" name="label_7">
+          <widget class="QLabel" name="tracks_error_label">
+           <property name="styleSheet">
+            <string notr="true">color:red</string>
+           </property>
            <property name="text">
-            <string>2 files can't be found</string>
+            <string>Please load an XML!</string>
            </property>
           </widget>
          </item>
@@ -109,12 +122,12 @@
       </widget>
      </item>
      <item>
-      <widget class="QLineEdit" name="lineEdit_5"/>
+      <widget class="QLineEdit" name="table_filter_lineedit"/>
      </item>
     </layout>
    </item>
    <item>
-    <widget class="QTableWidget" name="tableWidget">
+    <widget class="QTableWidget" name="songs_table">
      <property name="enabled">
       <bool>false</bool>
      </property>
@@ -147,6 +160,11 @@
        <string>Row1</string>
       </property>
      </row>
+     <column>
+      <property name="text">
+       <string>Track ID</string>
+      </property>
+     </column>
      <column>
       <property name="text">
        <string>Copy?</string>
@@ -189,7 +207,7 @@
      </column>
      <item row="0" column="0">
       <property name="text">
-       <string>N</string>
+       <string>25</string>
       </property>
      </item>
      <item row="0" column="1">
@@ -199,30 +217,35 @@
      </item>
      <item row="0" column="2">
       <property name="text">
-       <string>September</string>
+       <string>N</string>
       </property>
      </item>
      <item row="0" column="3">
       <property name="text">
-       <string>Earth, Wind &amp; Fire</string>
+       <string>September</string>
       </property>
      </item>
      <item row="0" column="4">
       <property name="text">
-       <string>September</string>
+       <string>Earth, Wind &amp; Fire</string>
       </property>
      </item>
      <item row="0" column="5">
       <property name="text">
-       <string>15</string>
+       <string>September</string>
       </property>
      </item>
      <item row="0" column="6">
       <property name="text">
-       <string>D:\Music\september.mp3</string>
+       <string>15</string>
       </property>
      </item>
      <item row="0" column="7">
+      <property name="text">
+       <string>D:\Music\september.mp3</string>
+      </property>
+     </item>
+     <item row="0" column="8">
       <property name="text">
        <string>Yes (0:00.012 - 3:36.150)</string>
       </property>
@@ -245,10 +268,10 @@
          </widget>
         </item>
         <item>
-         <widget class="QLineEdit" name="lineEdit_2"/>
+         <widget class="QLineEdit" name="mp3_path_lineedit"/>
         </item>
         <item>
-         <widget class="QPushButton" name="pushButton_2">
+         <widget class="QPushButton" name="mp3_browse_button">
           <property name="text">
            <string>Browse</string>
           </property>
@@ -273,10 +296,10 @@
          </widget>
         </item>
         <item>
-         <widget class="QLineEdit" name="lineEdit_3"/>
+         <widget class="QLineEdit" name="db_path_lineedit"/>
         </item>
         <item>
-         <widget class="QPushButton" name="pushButton_3">
+         <widget class="QPushButton" name="db_browse_button">
           <property name="text">
            <string>Browse</string>
           </property>
@@ -347,7 +370,7 @@
             </widget>
            </item>
            <item>
-            <widget class="QLineEdit" name="lineEdit_4">
+            <widget class="QLineEdit" name="bpstat_path_lineedit">
              <property name="placeholderText">
               <string>/storage/emulated/0/Music</string>
              </property>
@@ -362,12 +385,12 @@
     </widget>
    </item>
    <item>
-    <widget class="QPushButton" name="pushButton_4">
+    <widget class="QPushButton" name="start_button">
      <property name="enabled">
       <bool>false</bool>
      </property>
      <property name="text">
-      <string>Start syncing</string>
+      <string>Start processing</string>
      </property>
     </widget>
    </item>
