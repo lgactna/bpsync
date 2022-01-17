@@ -22,12 +22,34 @@ SONGS_FOLDER = 'tmp'
 TARGET_FOLDER = '/storage/sdcard1/imported-music/'
 
 # TODO: Separate functions for each part of the process
-#       - Calculating accessible files by filepath, removing inaccessible Song objects
+#       - Calculating accessible files by filepath, flagging (but not removing) inaccessible songs
 #       - Calculating files that need to be trimmed
 #       - Strip ID3 of semicolons
 #       - Create db
 #       - Calculate deltas
 
+from first_time import Ui_FirstTimeWindow
+from PySide6 import QtWidgets, QtCore
+import sys
+
+class FirstTimeWindow(QtWidgets.QWidget,Ui_FirstTimeWindow):
+    def __init__(self):
+        super().__init__()
+
+        self.setWindowModality(QtCore.Qt.ApplicationModal) 
+        self.setupUi(self)
+
+app = QtWidgets.QApplication(sys.argv)
+
+# Create a Qt widget, which will be our window.
+window = FirstTimeWindow()
+window.show()  # IMPORTANT!!!!! Windows are hidden by default.
+
+# Start the event loop.
+app.exec()
+
+
+'''
 if __name__ == "__main__":
     lib = Library('iTunes_Music_Library.xml')
     # TODO: dict with key:value of persistent id:Song
@@ -64,3 +86,4 @@ if __name__ == "__main__":
     # Create provisional XML using libpytunes
 
     # Write to database and tidy up
+'''
