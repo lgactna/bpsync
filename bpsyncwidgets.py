@@ -50,8 +50,8 @@ class CheckBoxDelegate(QtWidgets.QItemDelegate):
         https://forum.qt.io/topic/121874/how-to-access-source-model-methods-from-proxy-model,
         https://doc.qt.io/qt-5/qabstractproxymodel.html#mapToSource
         '''
-
-        source_index = self.parent().proxy.mapToSource(index)
+        # `index` returns the index relative to the proxy, which must be remapped to the source
+        source_index = self.parent().proxy.mapToSource(index) 
         data = self.parent().table_model.data(source_index, Qt.DisplayRole)
         data = int(not bool(data)) # Invert 1 -> 0 or 0 -> 1
 
@@ -136,7 +136,10 @@ class SongTableModel(QAbstractTableModel):
 
     def headerData(self, col, orientation, role):
         if orientation == Qt.Horizontal and role == Qt.DisplayRole:
-            return self.header_data[col]
+            #return self.header_data[col]
+            p = QPixmap(12,12)
+            p.fill(Qt.green)
+            return p
         return None
 
     def setData(self, index, value, role = Qt.EditRole):     
@@ -171,10 +174,10 @@ class SongView(QTableView):
     """
     # TODO: Create top-row used for unchecking and checking all, if checkboxes used
     #       See https://wiki.qt.io/Technical_FAQ#How_can_I_insert_a_checkbox_into_the_header_of_my_view.3F
-    # TODO: Test data replacement
-    # TODO: Set column widths
+    #       Or https://stackoverflow.com/questions/21557913/checkbox-in-a-header-cell-in-qtableview
 
-    # In Qt Designer: https://stackoverflow.com/questions/19622014/how-do-i-use-promote-to-in-qt-designer-in-pyqt4
+    # Using custom derived classes in Designer:
+    # https://stackoverflow.com/questions/19622014/how-do-i-use-promote-to-in-qt-designer-in-pyqt4
 
     def __init__(self, *args, **kwargs):
         # QWidget.__init__(self, *args, **kwargs)
