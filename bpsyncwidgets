@@ -190,7 +190,9 @@ class SongView(QTableView):
 
         # Use checkbox item delegate for specified columns
         delegate = CheckBoxDelegate(self)
-        self.setItemDelegateForColumn(1, delegate)
+        for column in box_columns:
+            self.setItemDelegateForColumn(column, delegate)
+
         '''
         for row in range(4):
             for column in range(3):
@@ -207,6 +209,7 @@ class TestWidget(QWidget):
         # Testing parameters
         headers = ["Track ID", "Copy?", "Track?", "Title", "Artist", "Album", "Plays", "Trimmed?", "Filepath"]
         data = [
+                [None, 1, 1, None, None, None, None, None, None],
                 [23, 1, 1, "image material", "tatsh", "zephyr", 52, "Yes (0:00.000 - 5:25.012)", "D:/Music/a.mp3"],
                 [37, 1, 1, "the world's end", "horie yui", "zephyr", 24, "Yes (0:00.000 - 2:14.120)", "D:/Music/b.mp3"],
                 [316, 1, 1, "oceanus", "cosmo@bosoup", "deemo", 13, "No", "D:/Music/c.mp3"],
@@ -215,6 +218,7 @@ class TestWidget(QWidget):
         box_columns = [1, 2]
         filter_on = [3, 4, 5]
 
+        # TODO: Create top-row used for unchecking and checking all
 
         # Initialize SongView, add to window's layout
         tv1 = SongView(headers, data, box_columns, filter_on)
