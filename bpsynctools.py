@@ -1,3 +1,7 @@
+"""
+Various convenience functions
+"""
+
 import os
 from shutil import copy2
 from datetime import datetime
@@ -88,3 +92,23 @@ def create_backup(file_path, output_folder='backups'):
     out_path = os.path.join(output_folder, file_name)
 
     copy2(file_path, out_path)
+
+def first_sync_array_from_lib(lib):
+    """
+    Creates a 2D array suitable for use with the SongView in the first-time sync window.
+
+    :param lib: A libpytunes Library object.
+
+    Assumes copying and tracking should be enabled.
+    """
+    # TODO: Decide on using *(length) or Y/N(length-length)
+    headers = ["Track ID", "Copy?", "Track?", "Title", "Artist", "Album", "Plays", "Trimmed?", "Filepath"]
+
+    data = []
+    for track_id, song in lib.songs.items():
+        play_count = song.play_count if song.play_count else 0
+        trimmed = bool(song.start_time or song.stop_time)
+
+        data.append([track_id, 1, 1, song.name, song.artist, song.album, play_count, trimmed, song.location])
+
+    return data

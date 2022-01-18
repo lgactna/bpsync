@@ -41,37 +41,35 @@ class FirstTimeWindow(QtWidgets.QWidget,Ui_FirstTimeWindow):
         self.setupUi(self)
 
         self.program_path = QtCore.QDir.currentPath()
+        self.lib = None  # libpytunes Library object
 
         # Prepopulate fields
         self.mp3_path_lineedit.setText('/tmp')
         self.data_path_lineedit.setText('/data')
 
         # Signals and slots
+        ## Buttons
         self.xml_browse_button.clicked.connect(self.xml_open_prompt)
         self.xml_load_button.clicked.connect(self.update_with_xml)
         self.mp3_browse_button.clicked.connect(self.mp3_save_prompt)
         self.data_browse_button.clicked.connect(self.data_save_prompt)
+        ## Table functionality
+        #...
 
         # Table
-        # TODO: Replace table data instead of remaking it
-        # TODO: Correctly initialize as SongView instead of inserting into existing QWidget?
+        ## In order: column headers, starting data, checkbox columns, columns to filter on with lineedit
         headers = ["Track ID", "Copy?", "Track?", "Title", "Artist", "Album", "Plays", "Trimmed?", "Filepath"]
-        data = [
-                [None, 1, 1, None, None, None, None, None, None],
-                [23, 1, 1, "image material", "tatsh", "zephyr", 52, "Yes (0:00.000 - 5:25.012)", "D:/Music/a.mp3"],
-                [37, 1, 1, "the world's end", "horie yui", "zephyr", 24, "Yes (0:00.000 - 2:14.120)", "D:/Music/b.mp3"],
-                [316, 1, 1, "oceanus", "cosmo@bosoup", "deemo", 13, "No", "D:/Music/c.mp3"],
-                [521, 0, 0, "wow", "eien-p", "r", 0, "No", "D:/Music/d.mp3"]
-               ]
+        data = [[1, 1, 1, "YU.ME.NO !", "ユメガタリ(ミツキヨ , shnva)", " ユメの喫茶店", 24, "No", "D:/Music/a.mp3"]]
         box_columns = [1, 2]
         filter_on = [3, 4, 5]
-        
-        self.table_widget.setup(headers, data, box_columns, filter_on)
 
-        #self.table_widget.setLayout(QtWidgets.QVBoxLayout())
-        #self.table_widget.layout().addWidget(tv)
-    
-        #self.layout().addWidget(tv)
+        column_sizes = [50, 40, 40, 200, 120, 120, 50, 100, 200]
+        
+        ## Set up initial table contents and formatting
+        self.table_widget.setup(headers, data, box_columns, filter_on)
+        self.table_widget.set_column_widths(column_sizes)
+
+        # TODO: React to all fields being properly set up
 
     def xml_open_prompt(self):
         file_name, _ = QtWidgets.QFileDialog.getOpenFileName(self, "Open XML", self.program_path,
@@ -93,21 +91,14 @@ class FirstTimeWindow(QtWidgets.QWidget,Ui_FirstTimeWindow):
 
     def update_with_xml(self):
         # get contents of lineedit
-        xml_path = xml_path_lineedit.text()
+        xml_path = self.xml_path_lineedit.text()
         # generate library from it
         lib = Library(xml_path)
         # update table from it
-        
-        #sample code
-        self.sample_output_table.setColumnCount(0)
-        self.sample_output_table.setRowCount(0)
-        for header_index in range(0, len(data[0])):
-            self.sample_output_table.insertColumn(header_index)
-            self.sample_output_table.setHorizontalHeaderItem(header_index, QtWidgets.QTableWidgetItem(data[0][header_index]))
-        for row_number in range(0, len(data[1])):
-            self.sample_output_table.insertRow(row_number)
-            for column_number in range(0, len(data[0])):
-                self.sample_output_table.setItem(row_number, column_number, QtWidgets.QTableWidgetItem(data[1][row_number][column_number]))
+        data = bpsynctools.first_sync_array_from_lib(lib)
+        self.table_widget.set_data(data)
+
+        # TODO: Calculate top-right statistics
 
 app = QtWidgets.QApplication(sys.argv)
 
