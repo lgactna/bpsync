@@ -167,6 +167,10 @@ class SongView(QTableView):
     :param boxes: Zero-indexed array of indices to replace with the CheckBoxDelegate.
     :param filter_on: Array of indices to sort on.
     """
+    # TODO: Create top-row used for unchecking and checking all, if checkboxes used
+    # TODO: Test data replacement
+    # TODO: Set column widths
+
     def __init__(self, headers, data, box_columns, filter_columns, *args, **kwargs):
         # QWidget.__init__(self, *args, **kwargs)
         super().__init__()
@@ -217,8 +221,6 @@ class TestWidget(QWidget):
                ]
         box_columns = [1, 2]
         filter_on = [3, 4, 5]
-
-        # TODO: Create top-row used for unchecking and checking all
 
         # Initialize SongView, add to window's layout
         tv1 = SongView(headers, data, box_columns, filter_on)
