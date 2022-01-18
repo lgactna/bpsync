@@ -45,7 +45,7 @@ class FirstTimeWindow(QtWidgets.QWidget,Ui_FirstTimeWindow):
 
         # Prepopulate fields
         self.mp3_path_lineedit.setText('/tmp')
-        self.data_path_lineedit.setText('/data')
+        self.data_path_lineedit.setText('/data/bpstat')
 
         # Signals and slots
         ## Buttons
@@ -55,7 +55,6 @@ class FirstTimeWindow(QtWidgets.QWidget,Ui_FirstTimeWindow):
         self.data_browse_button.clicked.connect(self.data_save_prompt)
         ## Table functionality
         self.table_filter_lineedit.textChanged.connect(lambda text: self.table_widget.proxy.setFilterRegularExpression(QtCore.QRegularExpression(text,QtCore.QRegularExpression.CaseInsensitiveOption)))
-        #self.table_filter_lineedit.textChanged.connect(lambda text: self.table_widget.proxy.setFilterRegularExpression(text))
 
         # Table
         ## In order: column headers, starting data, checkbox columns, columns to filter on with lineedit
