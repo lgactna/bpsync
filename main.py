@@ -10,6 +10,7 @@ import eyed3
 import bpparse
 import models
 import bpsynctools
+import bpsyncwidgets
 
 logger = logging.getLogger(__name__)
 
@@ -51,6 +52,27 @@ class FirstTimeWindow(QtWidgets.QWidget,Ui_FirstTimeWindow):
         self.mp3_browse_button.clicked.connect(self.mp3_save_prompt)
         self.data_browse_button.clicked.connect(self.data_save_prompt)
 
+        # Table
+        # TODO: Replace table data instead of remaking it
+        # TODO: Correctly initialize as SongView instead of inserting into existing QWidget?
+        headers = ["Track ID", "Copy?", "Track?", "Title", "Artist", "Album", "Plays", "Trimmed?", "Filepath"]
+        data = [
+                [None, 1, 1, None, None, None, None, None, None],
+                [23, 1, 1, "image material", "tatsh", "zephyr", 52, "Yes (0:00.000 - 5:25.012)", "D:/Music/a.mp3"],
+                [37, 1, 1, "the world's end", "horie yui", "zephyr", 24, "Yes (0:00.000 - 2:14.120)", "D:/Music/b.mp3"],
+                [316, 1, 1, "oceanus", "cosmo@bosoup", "deemo", 13, "No", "D:/Music/c.mp3"],
+                [521, 0, 0, "wow", "eien-p", "r", 0, "No", "D:/Music/d.mp3"]
+               ]
+        box_columns = [1, 2]
+        filter_on = [3, 4, 5]
+        
+        self.table_widget.setup(headers, data, box_columns, filter_on)
+
+        #self.table_widget.setLayout(QtWidgets.QVBoxLayout())
+        #self.table_widget.layout().addWidget(tv)
+    
+        #self.layout().addWidget(tv)
+
     def xml_open_prompt(self):
         file_name, _ = QtWidgets.QFileDialog.getOpenFileName(self, "Open XML", self.program_path,
                 "XML (*.xml);;All Files (*)")
@@ -75,19 +97,7 @@ class FirstTimeWindow(QtWidgets.QWidget,Ui_FirstTimeWindow):
         # generate library from it
         lib = Library(xml_path)
         # update table from it
-        '''
-        fields:
-        - track ID
-        - copy?
-        - track for syncing?
-        - title
-        - artist
-        - album
-        - playcount
-        - filepath
-        - trimmed? y/n (x:xx.xxx - x:xx.xxx)
-        '''
-
+        
         #sample code
         self.sample_output_table.setColumnCount(0)
         self.sample_output_table.setRowCount(0)

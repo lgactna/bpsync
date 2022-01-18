@@ -16,8 +16,10 @@ from PySide6.QtGui import (QBrush, QColor, QConicalGradient, QCursor,
     QImage, QKeySequence, QLinearGradient, QPainter,
     QPalette, QPixmap, QRadialGradient, QTransform)
 from PySide6.QtWidgets import (QApplication, QGridLayout, QGroupBox, QHBoxLayout,
-    QHeaderView, QLabel, QLineEdit, QPushButton,
-    QSizePolicy, QTableView, QVBoxLayout, QWidget)
+    QLabel, QLineEdit, QPushButton, QSizePolicy,
+    QVBoxLayout, QWidget)
+
+from bpsyncwidgets import SongView
 
 class Ui_FirstTimeWindow(object):
     def setupUi(self, FirstTimeWindow):
@@ -103,6 +105,16 @@ class Ui_FirstTimeWindow(object):
 
         self.verticalLayout_3.addWidget(self.label_8)
 
+        self.table_widget = SongView(FirstTimeWindow)
+        self.table_widget.setObjectName(u"table_widget")
+        sizePolicy = QSizePolicy(QSizePolicy.Expanding, QSizePolicy.Expanding)
+        sizePolicy.setHorizontalStretch(0)
+        sizePolicy.setVerticalStretch(0)
+        sizePolicy.setHeightForWidth(self.table_widget.sizePolicy().hasHeightForWidth())
+        self.table_widget.setSizePolicy(sizePolicy)
+
+        self.verticalLayout_3.addWidget(self.table_widget)
+
         self.horizontalLayout_4 = QHBoxLayout()
         self.horizontalLayout_4.setObjectName(u"horizontalLayout_4")
         self.label_18 = QLabel(FirstTimeWindow)
@@ -117,18 +129,6 @@ class Ui_FirstTimeWindow(object):
 
 
         self.verticalLayout_3.addLayout(self.horizontalLayout_4)
-
-        self.songs_table = QTableView(FirstTimeWindow)
-        self.songs_table.setObjectName(u"songs_table")
-        self.songs_table.setEnabled(False)
-        self.songs_table.horizontalHeader().setMinimumSectionSize(100)
-        self.songs_table.horizontalHeader().setStretchLastSection(True)
-        self.songs_table.verticalHeader().setVisible(True)
-        self.songs_table.verticalHeader().setCascadingSectionResizes(True)
-        self.songs_table.verticalHeader().setMinimumSectionSize(20)
-        self.songs_table.verticalHeader().setStretchLastSection(True)
-
-        self.verticalLayout_3.addWidget(self.songs_table)
 
         self.groupBox = QGroupBox(FirstTimeWindow)
         self.groupBox.setObjectName(u"groupBox")

@@ -168,13 +168,17 @@ class SongView(QTableView):
     :param filter_on: Array of indices to sort on.
     """
     # TODO: Create top-row used for unchecking and checking all, if checkboxes used
+    #       See https://wiki.qt.io/Technical_FAQ#How_can_I_insert_a_checkbox_into_the_header_of_my_view.3F
     # TODO: Test data replacement
     # TODO: Set column widths
 
-    def __init__(self, headers, data, box_columns, filter_columns, *args, **kwargs):
+    # In Qt Designer: https://stackoverflow.com/questions/19622014/how-do-i-use-promote-to-in-qt-designer-in-pyqt4
+
+    def __init__(self, *args, **kwargs):
         # QWidget.__init__(self, *args, **kwargs)
         super().__init__()
-
+    
+    def setup(self, headers, data, box_columns, filter_columns):
         # Arguments for table
         self.headers = headers
         self.data = data
@@ -196,13 +200,6 @@ class SongView(QTableView):
         delegate = CheckBoxDelegate(self)
         for column in box_columns:
             self.setItemDelegateForColumn(column, delegate)
-
-        '''
-        for row in range(4):
-            for column in range(3):
-                index = self.table_model.index(row, column, QModelIndex())
-                self.table_model.setData(index, 1)
-        '''
 
 # Only for local execution
 class TestWidget(QWidget):

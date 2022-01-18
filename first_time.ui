@@ -113,6 +113,16 @@
     </widget>
    </item>
    <item>
+    <widget class="SongView" name="table_widget" native="true">
+     <property name="sizePolicy">
+      <sizepolicy hsizetype="Expanding" vsizetype="Expanding">
+       <horstretch>0</horstretch>
+       <verstretch>0</verstretch>
+      </sizepolicy>
+     </property>
+    </widget>
+   </item>
+   <item>
     <layout class="QHBoxLayout" name="horizontalLayout_4">
      <item>
       <widget class="QLabel" name="label_18">
@@ -125,31 +135,6 @@
       <widget class="QLineEdit" name="table_filter_lineedit"/>
      </item>
     </layout>
-   </item>
-   <item>
-    <widget class="QTableView" name="songs_table">
-     <property name="enabled">
-      <bool>false</bool>
-     </property>
-     <attribute name="horizontalHeaderMinimumSectionSize">
-      <number>100</number>
-     </attribute>
-     <attribute name="horizontalHeaderStretchLastSection">
-      <bool>true</bool>
-     </attribute>
-     <attribute name="verticalHeaderVisible">
-      <bool>true</bool>
-     </attribute>
-     <attribute name="verticalHeaderCascadingSectionResizes">
-      <bool>true</bool>
-     </attribute>
-     <attribute name="verticalHeaderMinimumSectionSize">
-      <number>20</number>
-     </attribute>
-     <attribute name="verticalHeaderStretchLastSection">
-      <bool>true</bool>
-     </attribute>
-    </widget>
    </item>
    <item>
     <widget class="QGroupBox" name="groupBox">
@@ -295,6 +280,14 @@
    </item>
   </layout>
  </widget>
+ <customwidgets>
+  <customwidget>
+   <class>SongView</class>
+   <extends>QWidget</extends>
+   <header>bpsyncwidgets.h</header>
+   <container>1</container>
+  </customwidget>
+ </customwidgets>
  <resources/>
  <connections/>
 </ui>
