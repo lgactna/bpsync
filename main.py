@@ -100,14 +100,14 @@ class FirstTimeWindow(QtWidgets.QWidget,Ui_FirstTimeWindow):
 
         # TODO: Calculate top-right statistics
 
-app = QtWidgets.QApplication(sys.argv)
+if __name__ == "__main__":
+    app = QtWidgets.QApplication(sys.argv)
 
-# Create a Qt widget, which will be our window.
-window = FirstTimeWindow()
-window.show()  # IMPORTANT!!!!! Windows are hidden by default.
+    window = FirstTimeWindow()
+    window.show()
 
-# Start the event loop.
-app.exec()
+    # Start the event loop.
+    app.exec()
 
 
 '''
