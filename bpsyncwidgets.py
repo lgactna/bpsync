@@ -187,19 +187,19 @@ class SongView(QTableView):
         Initializes the table.
         
         :param headers: An array of strings to set the headers for.
-        :param data: A 2D array of table data. Horizontal dimensions must be equivalent to `headers`
+        :param data: A 2D array of table data. Horizontal dimensions must be equivalent to `headers`.
         :param boxes: Zero-indexed array of indices to replace with the CheckBoxDelegate.
         :param filter_on: Array of indices to sort on.
         :param row_height: Height of all rows.
         """
         # Arguments for table
         self.headers = headers
-        self.data = data
+        data = data  # Only used on initialization
         self.box_columns = box_columns
         self.filter_columns = filter_columns
 
         # Create main (hidden) model
-        self.table_model = SongTableModel(self.data, self.headers, self.box_columns, self)
+        self.table_model = SongTableModel(data, self.headers, self.box_columns, self)
         
         # Create proxy model
         self.proxy = SortFilterProxyModel(self)
@@ -227,6 +227,16 @@ class SongView(QTableView):
         """
         for column_ind, column_width in enumerate(column_sizes):
             self.setColumnWidth(column_ind, column_width)
+    
+    def set_data(self, data):
+        """
+        Update underlying data and emit `layoutChanged()`.
+
+        :param data: A 2D array of table data. Horizontal dimensions must be equivalent to `headers`.
+        """
+        self.table_model.layoutAboutToBeChanged.emit()
+        self.table_model.array_data = data
+        self.table_model.layoutChanged.emit()
 
 # Only for local execution
 class TestWidget(QWidget):
