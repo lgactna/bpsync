@@ -25,6 +25,7 @@ class CheckBoxDelegate(QtWidgets.QItemDelegate):
         """
         Paint a checkbox without the label.
         """
+        self.drawBackground(painter, option, index) # Draws the background for row-based selection
         self.drawCheck(painter, option, option.rect, QtCore.Qt.Unchecked if int(index.data()) == 0 else QtCore.Qt.Checked)
 
     def editorEvent(self, event, model, option, index):
@@ -166,6 +167,8 @@ class SongView(QTableView):
     :param data: A 2D array of table data. Horizontal dimensions must be equivalent to `headers`
     :param boxes: Zero-indexed array of indices to replace with the CheckBoxDelegate.
     :param filter_on: Array of indices to sort on.
+
+    The entire row, representing one song, is selected by default.
     """
     # TODO: Create top-row used for unchecking and checking all, if checkboxes used
     #       See https://wiki.qt.io/Technical_FAQ#How_can_I_insert_a_checkbox_into_the_header_of_my_view.3F
@@ -177,6 +180,7 @@ class SongView(QTableView):
     def __init__(self, *args, **kwargs):
         # QWidget.__init__(self, *args, **kwargs)
         super().__init__()
+        self.setSelectionBehavior(QAbstractItemView.SelectRows)
     
     def setup(self, headers, data, box_columns, filter_columns):
         # Arguments for table
@@ -220,7 +224,8 @@ class TestWidget(QWidget):
         filter_on = [3, 4, 5]
 
         # Initialize SongView, add to window's layout
-        tv1 = SongView(headers, data, box_columns, filter_on)
+        tv1 = SongView()
+        tv1.setup(headers, data, box_columns, filter_on)
         self.layout().addWidget(tv1)
 
         # Add form layout
