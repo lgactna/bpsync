@@ -34,7 +34,6 @@ class CheckBoxDelegate(QtWidgets.QItemDelegate):
         if the user presses the left mousebutton and this cell is editable. Otherwise do nothing.
         '''
         if not int(index.flags() & QtCore.Qt.ItemIsEditable) > 0:
-            print(int(index.flags()))
             return False
         if event.type() == QtCore.QEvent.Type.MouseButtonRelease and event.button() == Qt.MouseButton.LeftButton:
             # Change the checkbox-state
@@ -78,7 +77,7 @@ class SortFilterProxyModel(QSortFilterProxyModel):
         # The proxy's current regular expression filter
         regex = self.filterRegularExpression()
 
-        #iterate over all columns of row
+        #iterate over all columns selected for filtering
         filter_columns = self.parent().filter_columns
         for column_index in filter_columns:
             index = self.sourceModel().index(source_row, column_index, source_parent)
