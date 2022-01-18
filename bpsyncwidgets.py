@@ -97,7 +97,6 @@ class SongTableModel(QAbstractTableModel):
     Also see:
     https://stackoverflow.com/questions/15757072/user-editable-checkbox-in-qtableview
     https://stackoverflow.com/questions/1849337/how-can-i-add-a-user-editable-checkbox-in-qtableview-using-only-qstandarditemmod
-
     """
     def __init__(self, data, headers, checkbox_columns, parent=None):
         """
@@ -161,14 +160,15 @@ class SongTableModel(QAbstractTableModel):
 
 class SongView(QTableView):
     """
-    Custom QTableView with support for checkboxes and multi-column filtering.
+    Custom QTableView with support for checkboxes and multi-column filtering. Call `setup()` to setup.
 
-    :param headers: An array of strings to set the headers for.
-    :param data: A 2D array of table data. Horizontal dimensions must be equivalent to `headers`
-    :param boxes: Zero-indexed array of indices to replace with the CheckBoxDelegate.
-    :param filter_on: Array of indices to sort on.
+    To filter, connect a signal to the proxy's regular expression filter, e.g.:
+    `self.LineEdit.textChanged.connect(lambda text: SongView.proxy.setFilterRegularExpression(text))`
 
-    The entire row, representing one song, is selected by default.
+    Additional defaults:
+        - SelectionBehavior is QAbstractItemView.SelectRows
+        - Last column is stretched to fit viewable table
+
     """
     # TODO: Create top-row used for unchecking and checking all, if checkboxes used
     #       See https://wiki.qt.io/Technical_FAQ#How_can_I_insert_a_checkbox_into_the_header_of_my_view.3F
@@ -182,7 +182,16 @@ class SongView(QTableView):
         super().__init__()
         self.setSelectionBehavior(QAbstractItemView.SelectRows)
     
-    def setup(self, headers, data, box_columns, filter_columns):
+    def setup(self, headers, data, box_columns, filter_columns, row_height=20):
+        """
+        Initializes the table.
+        
+        :param headers: An array of strings to set the headers for.
+        :param data: A 2D array of table data. Horizontal dimensions must be equivalent to `headers`
+        :param boxes: Zero-indexed array of indices to replace with the CheckBoxDelegate.
+        :param filter_on: Array of indices to sort on.
+        :param row_height: Height of all rows.
+        """
         # Arguments for table
         self.headers = headers
         self.data = data
@@ -205,6 +214,20 @@ class SongView(QTableView):
         for column in box_columns:
             self.setItemDelegateForColumn(column, delegate)
 
+        # Resize row heights
+        for row in range(0, self.table_model.rowCount(self)):
+            self.setRowHeight(row, row_height)
+
+        # Stretch last section
+        self.horizontalHeader().setStretchLastSection(True)
+
+    def set_column_widths(self, column_sizes):
+        """
+        Convenience function for resizing multiple columns at once.
+        """
+        for column_ind, column_width in enumerate(column_sizes):
+            self.setColumnWidth(column_ind, column_width)
+
 # Only for local execution
 class TestWidget(QWidget):
     def __init__(self, *args, **kwargs):
@@ -223,9 +246,12 @@ class TestWidget(QWidget):
         box_columns = [1, 2]
         filter_on = [3, 4, 5]
 
+        column_sizes = [50, 40, 40, 200, 120, 120, 50, 100, 200]
+
         # Initialize SongView, add to window's layout
         tv1 = SongView()
         tv1.setup(headers, data, box_columns, filter_on)
+        tv1.set_column_widths(column_sizes)
         self.layout().addWidget(tv1)
 
         # Add form layout
