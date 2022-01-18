@@ -54,7 +54,8 @@ class FirstTimeWindow(QtWidgets.QWidget,Ui_FirstTimeWindow):
         self.mp3_browse_button.clicked.connect(self.mp3_save_prompt)
         self.data_browse_button.clicked.connect(self.data_save_prompt)
         ## Table functionality
-        #...
+        self.table_filter_lineedit.textChanged.connect(lambda text: self.table_widget.proxy.setFilterRegularExpression(QtCore.QRegularExpression(text,QtCore.QRegularExpression.CaseInsensitiveOption)))
+        #self.table_filter_lineedit.textChanged.connect(lambda text: self.table_widget.proxy.setFilterRegularExpression(text))
 
         # Table
         ## In order: column headers, starting data, checkbox columns, columns to filter on with lineedit
@@ -93,9 +94,9 @@ class FirstTimeWindow(QtWidgets.QWidget,Ui_FirstTimeWindow):
         # get contents of lineedit
         xml_path = self.xml_path_lineedit.text()
         # generate library from it
-        lib = Library(xml_path)
+        self.lib = Library(xml_path)
         # update table from it
-        data = bpsynctools.first_sync_array_from_lib(lib)
+        data = bpsynctools.first_sync_array_from_lib(self.lib)
         self.table_widget.set_data(data)
 
         # TODO: Calculate top-right statistics
