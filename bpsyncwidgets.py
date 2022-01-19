@@ -57,6 +57,75 @@ class CheckBoxDelegate(QtWidgets.QItemDelegate):
 
         self.parent().table_model.setData(source_index, data, Qt.EditRole)
 
+class CheckBoxHeader(QtWidgets.QHeaderView):
+    # adapted from https://stackoverflow.com/questions/21557913/checkbox-in-a-header-cell-in-qtableview
+    def __init__(self, orientation, parent):
+        QtWidgets.QHeaderView.__init__(self, orientation, parent)
+        #super(CheckBoxHeader, self).__init__(orientation)
+        self.checked = True
+        self.checkBoxClicked = QtCore.Signal()
+
+        # Fixes sorting/clicking on the header items not working
+        # https://stackoverflow.com/questions/18777554/why-wont-my-custom-qheaderview-allow-sorting
+        self.setSectionsClickable(True)
+
+        # TODO: setup function to define checkbox column headers
+        # TODO: function in model to toggle all VISIBLE rows
+
+    def paintSection(self, painter, rect, logicalIndex):
+        # Draw the original section headers
+        painter.save()
+        super().paintSection(painter, rect, logicalIndex)
+        painter.restore()
+        
+        # Draw the checkbox
+        # see https://doc.qt.io/qt-5/qheaderview.html#sectionViewportPosition
+        x_start_pos = self.sectionViewportPosition(1)
+        if logicalIndex == 1:
+            option = QStyleOptionButton()
+            option.rect = QRect(x_start_pos+1,3,20,20)
+            option.state = QStyle.State_Enabled | QStyle.State_Active
+        
+            if self.checked:
+                option.state |= QStyle.State_On
+            else:
+                option.state |= QStyle.State_Off
+
+            self.style().drawPrimitive(QStyle.PE_IndicatorCheckBox, option, painter)
+    
+    
+    def mousePressEvent(self, event):
+        # Likely need to implement manual sorting, as well as manual tracking of checkbox positions
+        # i.e. use sortByColumn: https://doc.qt.io/qt-5/qtableview.html#sortByColumn
+        # https://stackoverflow.com/questions/26775577/hidden-sort-indicator-on-column-in-qtreeview
+        x_start_pos = self.sectionViewportPosition(1)
+        rect = QRect(x_start_pos+1,3,20,20)
+
+        click_point = event.position().toPoint()
+
+        # contains() only supports integer QPoints, not floating-point QPointF
+        if rect.contains(click_point):
+            self.setIsChecked(not self.checked)
+            self.checkBoxClicked.emit() # TODO: fix?
+        else:
+            section_index = self.logicalIndexAt(click_point)
+            # Invert if currently sorting on this column
+            if self.sortIndicatorSection() == section_index:
+                order = int(self.sortIndicatorOrder()) # as int
+                if order: # Currently descending
+                    self.setSortIndicator(section_index, Qt.AscendingOrder)
+                else:
+                    self.setSortIndicator(section_index, Qt.DescendingOrder)
+            else:
+                self.setSortIndicator(section_index, Qt.AscendingOrder)
+    
+    def redrawCheckBox(self):
+        self.viewport().update()
+
+    def setIsChecked(self, val):
+        if self.checked != val:
+            self.checked = val
+            self.redrawCheckBox()
 
 class SortFilterProxyModel(QSortFilterProxyModel):
     """
@@ -136,10 +205,7 @@ class SongTableModel(QAbstractTableModel):
 
     def headerData(self, col, orientation, role):
         if orientation == Qt.Horizontal and role == Qt.DisplayRole:
-            #return self.header_data[col]
-            p = QPixmap(12,12)
-            p.fill(Qt.green)
-            return p
+            return self.header_data[col]
         return None
 
     def setData(self, index, value, role = Qt.EditRole):     
@@ -215,6 +281,10 @@ class SongView(QTableView):
         delegate = CheckBoxDelegate(self)
         for column in box_columns:
             self.setItemDelegateForColumn(column, delegate)
+
+        # Use checkbox header
+        header = CheckBoxHeader(Qt.Horizontal, self)
+        self.setHorizontalHeader(header)
 
         # Resize row heights
         for row in range(0, self.table_model.rowCount(self)):
