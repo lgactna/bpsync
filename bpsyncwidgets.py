@@ -107,17 +107,9 @@ class CheckBoxHeader(QtWidgets.QHeaderView):
         if rect.contains(click_point):
             self.setIsChecked(not self.checked)
             self.checkBoxClicked.emit() # TODO: fix?
-        else:
-            section_index = self.logicalIndexAt(click_point)
-            # Invert if currently sorting on this column
-            if self.sortIndicatorSection() == section_index:
-                order = int(self.sortIndicatorOrder()) # as int
-                if order: # Currently descending
-                    self.setSortIndicator(section_index, Qt.AscendingOrder)
-                else:
-                    self.setSortIndicator(section_index, Qt.DescendingOrder)
-            else:
-                self.setSortIndicator(section_index, Qt.AscendingOrder)
+        
+        # Do the rest of the normal behavior of a mousePressEvent()
+        super().mousePressEvent(event)
     
     def redrawCheckBox(self):
         self.viewport().update()
