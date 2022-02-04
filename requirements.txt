@@ -3,3 +3,4 @@ pydub
 eyed3
 sqlalchemy
 fbs
+PySide6
