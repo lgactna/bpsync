@@ -59,12 +59,15 @@ class CheckBoxDelegate(QtWidgets.QItemDelegate):
 
 
 class CheckBoxHeader(QtWidgets.QHeaderView):
+    # https://stackoverflow.com/questions/2970312/pyqt4-qtcore-pyqtsignal-object-has-no-attribute-connect
+    # custom signals must be class variables, not attribute variables
+    checkBoxClicked = QtCore.Signal()
+
     # adapted from https://stackoverflow.com/questions/21557913/checkbox-in-a-header-cell-in-qtableview
     def __init__(self, orientation, parent):
         QtWidgets.QHeaderView.__init__(self, orientation, parent)
         # super(CheckBoxHeader, self).__init__(orientation)
         self.checked = True
-        self.checkBoxClicked = QtCore.Signal()
 
         # Fixes sorting/clicking on the header items not working
         # https://stackoverflow.com/questions/18777554/why-wont-my-custom-qheaderview-allow-sorting
@@ -107,6 +110,8 @@ class CheckBoxHeader(QtWidgets.QHeaderView):
         # contains() only supports integer QPoints, not floating-point QPointF
         if rect.contains(click_point):
             self.setIsChecked(not self.checked)
+
+            print(dir(self.checkBoxClicked))
             self.checkBoxClicked.emit()  # TODO: Tell parent about change
 
         # Do the rest of the normal behavior of a mousePressEvent(), like sorting
@@ -226,6 +231,7 @@ class SongTableModel(QAbstractTableModel):
         self.emit(SIGNAL("layoutChanged()"))
     '''
 
+
 class SongView(QTableView):
     """
     Custom QTableView with support for checkboxes and multi-column filtering. Call `setup()` to setup.
@@ -321,7 +327,6 @@ class TestWidget(QWidget):
         # Testing parameters
         headers = ["Track ID", "Copy?", "Track?", "Title", "Artist", "Album", "Plays", "Trimmed?", "Filepath"]
         data = [
-            [None, 1, 1, None, None, None, None, None, None],
             [23, 1, 1, "image material", "tatsh", "zephyr", 52, "Yes (0:00.000 - 5:25.012)", "D:/Music/a.mp3"],
             [37, 1, 1, "the world's end", "horie yui", "zephyr", 24, "Yes (0:00.000 - 2:14.120)", "D:/Music/b.mp3"],
             [316, 1, 1, "oceanus", "cosmo@bosoup", "deemo", 13, "No", "D:/Music/c.mp3"],
