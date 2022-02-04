@@ -4,7 +4,6 @@ from PySide6.QtGui import *
 
 from PySide6 import QtCore, QtWidgets
 
-from random import randint, choice
 
 class CheckBoxDelegate(QtWidgets.QItemDelegate):
     """
@@ -12,6 +11,7 @@ class CheckBoxDelegate(QtWidgets.QItemDelegate):
 
     From https://stackoverflow.com/questions/17748546/pyqt-column-of-checkboxes-in-a-qtableview
     """
+
     def __init__(self, parent):
         QtWidgets.QItemDelegate.__init__(self, parent)
 
@@ -25,14 +25,15 @@ class CheckBoxDelegate(QtWidgets.QItemDelegate):
         """
         Paint a checkbox without the label.
         """
-        self.drawBackground(painter, option, index) # Draws the background for row-based selection
-        self.drawCheck(painter, option, option.rect, QtCore.Qt.Unchecked if int(index.data()) == 0 else QtCore.Qt.Checked)
+        self.drawBackground(painter, option, index)  # Draws the background for row-based selection
+        self.drawCheck(painter, option, option.rect,
+                       QtCore.Qt.Unchecked if int(index.data()) == 0 else QtCore.Qt.Checked)
 
     def editorEvent(self, event, model, option, index):
-        '''
+        """
         Change the data in the model and the state of the checkbox
         if the user presses the left mousebutton and this cell is editable. Otherwise do nothing.
-        '''
+        """
         if not int(index.flags() & QtCore.Qt.ItemIsEditable) > 0:
             return False
         if event.type() == QtCore.QEvent.Type.MouseButtonRelease and event.button() == Qt.MouseButton.LeftButton:
@@ -41,27 +42,27 @@ class CheckBoxDelegate(QtWidgets.QItemDelegate):
             return True
         return False
 
-
-    def setModelData (self, editor, model, index):
-        '''
+    def setModelData(self, editor, model, index):
+        """
         Invert checkbox on click.
 
-        Affects proxy: 
+        Affects proxy:
         https://forum.qt.io/topic/121874/how-to-access-source-model-methods-from-proxy-model,
         https://doc.qt.io/qt-5/qabstractproxymodel.html#mapToSource
-        '''
+        """
         # `index` returns the index relative to the proxy, which must be remapped to the source
-        source_index = self.parent().proxy.mapToSource(index) 
-        data = self.parent().table_model.data(source_index, Qt.DisplayRole)
-        data = int(not bool(data)) # Invert 1 -> 0 or 0 -> 1
+        source_index = self.parent().proxy.mapToSource(index)
+        check_state = self.parent().table_model.data(source_index, Qt.DisplayRole)
+        check_state = 0 if check_state else 1  # Invert 1 -> 0 or 0 -> 1
 
-        self.parent().table_model.setData(source_index, data, Qt.EditRole)
+        self.parent().table_model.setData(source_index, check_state, Qt.EditRole)
+
 
 class CheckBoxHeader(QtWidgets.QHeaderView):
     # adapted from https://stackoverflow.com/questions/21557913/checkbox-in-a-header-cell-in-qtableview
     def __init__(self, orientation, parent):
         QtWidgets.QHeaderView.__init__(self, orientation, parent)
-        #super(CheckBoxHeader, self).__init__(orientation)
+        # super(CheckBoxHeader, self).__init__(orientation)
         self.checked = True
         self.checkBoxClicked = QtCore.Signal()
 
@@ -71,46 +72,46 @@ class CheckBoxHeader(QtWidgets.QHeaderView):
 
         # TODO: setup function to define checkbox column headers
         # TODO: function in model to toggle all VISIBLE rows
+        # TODO: function from proxy to return visible rows that can 
 
     def paintSection(self, painter, rect, logicalIndex):
         # Draw the original section headers
         painter.save()
         super().paintSection(painter, rect, logicalIndex)
         painter.restore()
-        
+
         # Draw the checkbox
         # see https://doc.qt.io/qt-5/qheaderview.html#sectionViewportPosition
         x_start_pos = self.sectionViewportPosition(1)
         if logicalIndex == 1:
             option = QStyleOptionButton()
-            option.rect = QRect(x_start_pos+1,3,20,20)
+            option.rect = QRect(x_start_pos + 1, 3, 20, 20)
             option.state = QStyle.State_Enabled | QStyle.State_Active
-        
+
             if self.checked:
                 option.state |= QStyle.State_On
             else:
                 option.state |= QStyle.State_Off
 
             self.style().drawPrimitive(QStyle.PE_IndicatorCheckBox, option, painter)
-    
-    
+
     def mousePressEvent(self, event):
         # Likely need to implement manual sorting, as well as manual tracking of checkbox positions
         # i.e. use sortByColumn: https://doc.qt.io/qt-5/qtableview.html#sortByColumn
         # https://stackoverflow.com/questions/26775577/hidden-sort-indicator-on-column-in-qtreeview
         x_start_pos = self.sectionViewportPosition(1)
-        rect = QRect(x_start_pos+1,3,20,20)
+        rect = QRect(x_start_pos + 1, 3, 20, 20)
 
         click_point = event.position().toPoint()
 
         # contains() only supports integer QPoints, not floating-point QPointF
         if rect.contains(click_point):
             self.setIsChecked(not self.checked)
-            self.checkBoxClicked.emit() # TODO: fix?
-        
-        # Do the rest of the normal behavior of a mousePressEvent()
+            self.checkBoxClicked.emit()  # TODO: Tell parent about change
+
+        # Do the rest of the normal behavior of a mousePressEvent(), like sorting
         super().mousePressEvent(event)
-    
+
     def redrawCheckBox(self):
         self.viewport().update()
 
@@ -119,15 +120,17 @@ class CheckBoxHeader(QtWidgets.QHeaderView):
             self.checked = val
             self.redrawCheckBox()
 
+
 class SortFilterProxyModel(QSortFilterProxyModel):
     """
     Proxy used to perform filtering and sorting without affecting the underlying data.
 
     Expects the parent (SongView) to have the filter_on array.
     """
+
     def __init__(self, *args, **kwargs):
         QSortFilterProxyModel.__init__(self, *args, **kwargs)
-        
+
     def filterAcceptsRow(self, source_row, source_parent):
         """
         Filters rows based on filterRegularExpression.
@@ -138,15 +141,16 @@ class SortFilterProxyModel(QSortFilterProxyModel):
         # The proxy's current regular expression filter
         regex = self.filterRegularExpression()
 
-        #iterate over all columns selected for filtering
+        # iterate over all columns selected for filtering
         filter_columns = self.parent().filter_columns
         for column_index in filter_columns:
             index = self.sourceModel().index(source_row, column_index, source_parent)
             if index.isValid():
-                 text = str(self.sourceModel().data(index, Qt.DisplayRole))
-                 if regex.match(text).hasMatch():
+                text = str(self.sourceModel().data(index, Qt.DisplayRole))
+                if regex.match(text).hasMatch():
                     return True
         return False
+
 
 class SongTableModel(QAbstractTableModel):
     """
@@ -158,6 +162,7 @@ class SongTableModel(QAbstractTableModel):
     https://stackoverflow.com/questions/15757072/user-editable-checkbox-in-qtableview
     https://stackoverflow.com/questions/1849337/how-can-i-add-a-user-editable-checkbox-in-qtableview-using-only-qstandarditemmod
     """
+
     def __init__(self, data, headers, checkbox_columns, parent=None):
         """
         :param data: 2D array of data
@@ -168,24 +173,24 @@ class SongTableModel(QAbstractTableModel):
         self.array_data = data
         self.header_data = headers
         self.checkbox_columns = checkbox_columns
-    
+
     def flags(self, index):
         """
         :param index: A QtCore.QModelIndex
         """
         if index.column() in self.checkbox_columns:
-            #return QAbstractTableModel.flags(index) | Qt.ItemIsUserCheckable
+            # return QAbstractTableModel.flags(index) | Qt.ItemIsUserCheckable
             return Qt.ItemIsEnabled | Qt.ItemIsSelectable | Qt.ItemIsEditable
         else:
-            #return QAbstractTableModel.flags(index)
+            # return QAbstractTableModel.flags(index)
             return Qt.ItemIsEnabled | Qt.ItemIsSelectable
 
     def rowCount(self, parent):
         return len(self.array_data)
 
     def columnCount(self, parent):
-        if len(self.array_data) > 0: 
-            return len(self.array_data[0]) 
+        if len(self.array_data) > 0:
+            return len(self.array_data[0])
         return 0
 
     def data(self, index, role):
@@ -200,23 +205,26 @@ class SongTableModel(QAbstractTableModel):
             return self.header_data[col]
         return None
 
-    def setData(self, index, value, role = Qt.EditRole):     
-        if role == Qt.EditRole:             
+    def setData(self, index, value, role=Qt.EditRole):
+        if role == Qt.EditRole:
             self.array_data[index.row()][index.column()] = value
-            self.dataChanged.emit(index, index, ())             
-            return True         
-        else:             
+            self.dataChanged.emit(index, index, ())
+            return True
+        else:
             return False
 
+    '''
+    # Manually called - see https://stackoverflow.com/questions/28660287/sort-qtableview-in-pyqt5
     def sort(self, Ncol, order):
         """
         Sort table by given column number.
         """
         self.emit(SIGNAL("layoutAboutToBeChanged()"))
-        self.array_data = sorted(self.array_data, key=operator.itemgetter(Ncol))       
+        self.array_data = sorted(self.array_data, key=operator.itemgetter(Ncol))
         if order == Qt.DescendingOrder:
             self.array_data.reverse()
         self.emit(SIGNAL("layoutChanged()"))
+    '''
 
 class SongView(QTableView):
     """
@@ -230,6 +238,7 @@ class SongView(QTableView):
         - Last column is stretched to fit viewable table
 
     """
+
     # TODO: Create top-row used for unchecking and checking all, if checkboxes used
     #       See https://wiki.qt.io/Technical_FAQ#How_can_I_insert_a_checkbox_into_the_header_of_my_view.3F
     #       Or https://stackoverflow.com/questions/21557913/checkbox-in-a-header-cell-in-qtableview
@@ -241,7 +250,7 @@ class SongView(QTableView):
         # QWidget.__init__(self, *args, **kwargs)
         super().__init__()
         self.setSelectionBehavior(QAbstractItemView.SelectRows)
-    
+
     def setup(self, headers, data, box_columns, filter_columns, row_height=20):
         """
         Initializes the table.
@@ -260,7 +269,7 @@ class SongView(QTableView):
 
         # Create main (hidden) model
         self.table_model = SongTableModel(data, self.headers, self.box_columns, self)
-        
+
         # Create proxy model
         self.proxy = SortFilterProxyModel(self)
         self.proxy.setSourceModel(self.table_model)
@@ -291,7 +300,7 @@ class SongView(QTableView):
         """
         for column_ind, column_width in enumerate(column_sizes):
             self.setColumnWidth(column_ind, column_width)
-    
+
     def set_data(self, data):
         """
         Update underlying data and emit `layoutChanged()`.
@@ -302,6 +311,7 @@ class SongView(QTableView):
         self.table_model.array_data = data
         self.table_model.layoutChanged.emit()
 
+
 # Only for local execution
 class TestWidget(QWidget):
     def __init__(self, *args, **kwargs):
@@ -311,12 +321,12 @@ class TestWidget(QWidget):
         # Testing parameters
         headers = ["Track ID", "Copy?", "Track?", "Title", "Artist", "Album", "Plays", "Trimmed?", "Filepath"]
         data = [
-                [None, 1, 1, None, None, None, None, None, None],
-                [23, 1, 1, "image material", "tatsh", "zephyr", 52, "Yes (0:00.000 - 5:25.012)", "D:/Music/a.mp3"],
-                [37, 1, 1, "the world's end", "horie yui", "zephyr", 24, "Yes (0:00.000 - 2:14.120)", "D:/Music/b.mp3"],
-                [316, 1, 1, "oceanus", "cosmo@bosoup", "deemo", 13, "No", "D:/Music/c.mp3"],
-                [521, 0, 0, "wow", "eien-p", "r", 0, "No", "D:/Music/d.mp3"]
-               ]
+            [None, 1, 1, None, None, None, None, None, None],
+            [23, 1, 1, "image material", "tatsh", "zephyr", 52, "Yes (0:00.000 - 5:25.012)", "D:/Music/a.mp3"],
+            [37, 1, 1, "the world's end", "horie yui", "zephyr", 24, "Yes (0:00.000 - 2:14.120)", "D:/Music/b.mp3"],
+            [316, 1, 1, "oceanus", "cosmo@bosoup", "deemo", 13, "No", "D:/Music/c.mp3"],
+            [521, 0, 0, "wow", "eien-p", "r", 0, "No", "D:/Music/d.mp3"]
+        ]
         box_columns = [1, 2]
         filter_on = [3, 4, 5]
 
@@ -331,12 +341,13 @@ class TestWidget(QWidget):
         # Add form layout
         flayout = QFormLayout()
         self.layout().addLayout(flayout)
-        
+
         # Add filter LineEdit to layout
         self.le = QLineEdit(self)
         flayout.addRow("Search", self.le)
         # On LineEdit change, reset the proxy's filter (which also implicitly runs FilterAcceptsRow())
         self.le.textChanged.connect(lambda text: tv1.proxy.setFilterRegularExpression(text))
+
 
 if __name__ == '__main__':
     import sys
