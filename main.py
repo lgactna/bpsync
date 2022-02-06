@@ -1,6 +1,7 @@
 import logging
 import os
 from datetime import datetime
+import xml.parsers.expat
 
 from libpytunes import Library
 from pydub import AudioSegment
@@ -33,6 +34,13 @@ from first_time import Ui_FirstTimeWindow
 from PySide6 import QtWidgets, QtCore, QtGui
 import sys
 
+def show_error_window(text, informative_text, title):
+    msg = QtWidgets.QMessageBox()
+    msg.setIcon(QtWidgets.QMessageBox.Critical)
+    msg.setText(text)
+    msg.setInformativeText(informative_text)
+    msg.setWindowTitle(title)
+    msg.exec()
 class FirstTimeWindow(QtWidgets.QWidget,Ui_FirstTimeWindow):
     def __init__(self):
         super().__init__()
@@ -53,17 +61,18 @@ class FirstTimeWindow(QtWidgets.QWidget,Ui_FirstTimeWindow):
         self.xml_load_button.clicked.connect(self.update_with_xml)
         self.mp3_browse_button.clicked.connect(self.mp3_save_prompt)
         self.data_browse_button.clicked.connect(self.data_save_prompt)
+        self.start_button.clicked.connect(self.start_processing)
         ## Table functionality
         self.table_filter_lineedit.textChanged.connect(lambda text: self.table_widget.proxy.set_filter_text(text))
 
         # Table
         ## In order: column headers, starting data, checkbox columns, columns to filter on with lineedit
-        headers = ["Track ID", "Copy?", "Track?", "Title", "Artist", "Album", "Plays", "Trimmed?", "Filepath"]
-        data = [[1, 1, 1, "YU.ME.NO !", "ユメガタリ(ミツキヨ , shnva)", " ユメの喫茶店", 24, "No", "D:/Music/a.mp3"]]
+        headers = ["Track ID", "Copy?", "Track?", "Title", "Artist", "Album", "Plays", "Trimmed?", "Volume%", "Filepath"]
+        data = [[1, 1, 1, "YU.ME.NO !", "ユメガタリ(ミツキヨ , shnva)", " ユメの喫茶店", 24, "No", "100%", "D:/Music/a.mp3"]]
         box_columns = [1, 2]
         filter_on = [3, 4, 5]
 
-        column_sizes = [50, 80, 80, 200, 120, 120, 50, 100, 200]
+        column_sizes = [50, 80, 80, 200, 120, 120, 50, 100, 50, 200]
         
         ## Set up initial table contents and formatting
         self.table_widget.setup(headers, data, box_columns, filter_on)
@@ -90,13 +99,43 @@ class FirstTimeWindow(QtWidgets.QWidget,Ui_FirstTimeWindow):
     def update_with_xml(self):
         # get contents of lineedit
         xml_path = self.xml_path_lineedit.text()
+        if not xml_path:
+            show_error_window("Please enter an XML path!", 
+                              "You can do this by manually entering the path or selecting it by clicking Browse.", 
+                              "No XML path defined")
+            return
         # generate library from it
-        self.lib = Library(xml_path)
+        try:
+            self.lib = Library(xml_path)
+        except xml.parsers.expat.ExpatError as e:
+            show_error_window("Invalid XML file!", 
+                              f"Couldn't parse XML file (if it is one) - {e}", 
+                              "Invalid XML file")
+            return
+        except FileNotFoundError:
+            show_error_window("File not found!", 
+                              "The entered path doesn't appear to exist.", 
+                              "Invalid XML filepath")
+            return
         # update table from it
         data = bpsynctools.first_sync_array_from_lib(self.lib)
         self.table_widget.set_data(data)
 
         # TODO: Calculate top-right statistics
+
+    def start_processing(self):
+        # Check if all necessary fields are (probably) filled out
+        mp3_target_directory = self.mp3_path_lineedit.text()
+        data_directory = self.data_path_lineedit.text()
+        bpstat_prefix = self.bpstat_path_lineedit.text()
+
+        if not(mp3_target_directory and data_directory and bpstat_prefix and self.lib):
+            show_error_window("Missing required fields!", 
+                              "Please make sure you've loaded an XML and set everything under Options.", 
+                              "Required fields missing")
+            return
+        
+        # Oh boy
 
 if __name__ == "__main__":
     app = QtWidgets.QApplication(sys.argv)
