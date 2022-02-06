@@ -55,7 +55,7 @@ def copy_and_process_song(song, output_folder='tmp'):
                     gain_factor = (song.volume_adjustment + 255)/255
                     decibel_change = 10 * log10(gain_factor)
                     obj = obj + decibel_change
-                    logging.info(f"Changed {song.title} gain factor by {gain_factor} ({decibel_change} dB)")
+                    logging.info(f"Changed {song.name} gain factor by {gain_factor} ({decibel_change} dB)")
 
             # tags parameter is used for retaining metadata
             obj.export(output_path, format="mp3", tags=mediainfo(song.location)['TAG'])
@@ -94,16 +94,16 @@ def check_for_semicolons(song):
             return True
     return False
 
-def add_to_bpstat(song, target_folder, bpstat_path):
+def add_to_bpstat(song, bpstat_prefix, bpstat_path):
     """
     Append a song to a line in the specified .bpstat.
     
     :param song: The libpytunes Song object to use for processing.
-    :param target_folder: The folder used within the .bpstat for its filepath field.
+    :param bpstat_prefix: The folder used within the .bpstat for its filepath field.
     :param bpstat_path: The full location of the .bpstat itself.
     """
     bpsong = bpparse.BPSong.from_song(song)
-    output = bpsong.as_bpstat_line(target_folder) + "\n"
+    output = bpsong.as_bpstat_line(bpstat_prefix) + "\n"
 
     with open(bpstat_path, "ab") as fp:
         fp.write(output.encode('utf-8'))
