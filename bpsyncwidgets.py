@@ -34,9 +34,6 @@ class CheckBoxDelegate(QtWidgets.QItemDelegate):
         Change the data in the model and the state of the checkbox
         if the user presses the left mousebutton and this cell is editable. Otherwise do nothing.
         """
-        import pprint
-        pprint.pprint(self.parent().table_model.array_data)
-
         if not int(index.flags() & QtCore.Qt.ItemIsEditable) > 0:
             return False
         if event.type() == QtCore.QEvent.Type.MouseButtonRelease and event.button() == Qt.MouseButton.LeftButton:
@@ -155,19 +152,20 @@ class SortFilterProxyModel(QSortFilterProxyModel):
 
     def __init__(self, *args, **kwargs):
         QSortFilterProxyModel.__init__(self, *args, **kwargs)
-        self.setDynamicSortFilter(False) # ???
+        # Enabling DynamicSortFilter means that editing a checkbox instantly resorts, which is jarring to the user
+        self.setDynamicSortFilter(False)
 
     def filterAcceptsRow(self, source_row, source_parent):
         """
         Filters rows based on filterRegularExpression.
 
         Intended signal is a textChanged from a LineEdit like so:
-        `self.LineEdit.textChanged.connect(lambda text: TableView.proxy.setFilterRegularExpression(text))`
+        `self.LineEdit.textChanged.connect(lambda text: TableView.proxy.set_filter_text(text))`
         """
         # The proxy's current regular expression filter
         regex = self.filterRegularExpression()
 
-        # iterate over all columns selected for filtering
+        # Iterate over all columns selected for filtering
         filter_columns = self.parent().filter_columns
         for column_index in filter_columns:
             index = self.sourceModel().index(source_row, column_index, source_parent)
@@ -177,7 +175,13 @@ class SortFilterProxyModel(QSortFilterProxyModel):
                     return True
         return False
 
-
+    def set_filter_text(self, text):
+        reg_exp = QtCore.QRegularExpression(text,QtCore.QRegularExpression.CaseInsensitiveOption)
+        # This implicitly runs FilterAcceptsRow()
+        self.setFilterRegularExpression(reg_exp)
+        # Fixes proxy not maintaining sorting after unfiltering
+        self.sort(self.sortColumn(), self.sortOrder())
+        
 class SongTableModel(QAbstractTableModel):
     """
     Adapted from the following: 
@@ -316,11 +320,10 @@ class SongView(QTableView):
 
         # Set standard row height
         # https://stackoverflow.com/questions/19304653/how-to-set-row-height-of-qtableview
-        # BUG: Filtering doesn't correctly call sort() so it goes out of order
         vertical_header = self.verticalHeader()
         vertical_header.setSectionResizeMode(QHeaderView.Fixed)
         vertical_header.setDefaultSectionSize(row_height)
-        
+
         # Stretch last section
         self.horizontalHeader().setStretchLastSection(True)
 
@@ -351,12 +354,8 @@ class SongView(QTableView):
             proxy_index = self.proxy.index(row_index, column_index)
             source_index = self.proxy.mapToSource(proxy_index)
             self.table_model.setData(source_index, new_check_state)
-
-        print(column_index, new_check_state)
         
         
-
-
 # Only for local execution
 class TestWidget(QWidget):
     def __init__(self, *args, **kwargs):
@@ -390,7 +389,7 @@ class TestWidget(QWidget):
         self.le = QLineEdit(self)
         flayout.addRow("Search", self.le)
         # On LineEdit change, reset the proxy's filter (which also implicitly runs FilterAcceptsRow())
-        self.le.textChanged.connect(lambda text: tv1.proxy.setFilterRegularExpression(text))
+        self.le.textChanged.connect(lambda text: tv1.proxy.set_filter_text(text))
 
 
 if __name__ == '__main__':

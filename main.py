@@ -54,7 +54,8 @@ class FirstTimeWindow(QtWidgets.QWidget,Ui_FirstTimeWindow):
         self.mp3_browse_button.clicked.connect(self.mp3_save_prompt)
         self.data_browse_button.clicked.connect(self.data_save_prompt)
         ## Table functionality
-        self.table_filter_lineedit.textChanged.connect(lambda text: self.table_widget.proxy.setFilterRegularExpression(QtCore.QRegularExpression(text,QtCore.QRegularExpression.CaseInsensitiveOption)))
+        # TODO: fix this to match new function
+        self.table_filter_lineedit.textChanged.connect(lambda text: self.table_widget.proxy.set_filter_text(text))
 
         # Table
         ## In order: column headers, starting data, checkbox columns, columns to filter on with lineedit
