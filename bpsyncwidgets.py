@@ -61,13 +61,24 @@ class CheckBoxDelegate(QtWidgets.QItemDelegate):
 class CheckBoxHeader(QtWidgets.QHeaderView):
     # https://stackoverflow.com/questions/2970312/pyqt4-qtcore-pyqtsignal-object-has-no-attribute-connect
     # custom signals must be class variables, not attribute variables
-    checkBoxClicked = QtCore.Signal()
+    # Slot: logicalIndex, new_check_state
+    checkBoxClicked = QtCore.Signal(int, bool)
 
     # adapted from https://stackoverflow.com/questions/21557913/checkbox-in-a-header-cell-in-qtableview
-    def __init__(self, orientation, parent):
+    def __init__(self, orientation, checkbox_columns, parent):
+        """
+        Initialize table header with support for checkbox column headers.
+
+        :param orientation: Orientation of the header (vertical, horizontal)
+        :param checkbox_columns: List with column indexes to apply checkboxes to as the key. Default value of checkbox is True.
+        :param parent: Parent widget.
+        """
         QtWidgets.QHeaderView.__init__(self, orientation, parent)
         # super(CheckBoxHeader, self).__init__(orientation)
-        self.checked = True
+        # TODO: improve clarity of this variable/design
+        self.checkbox_columns = {}
+        for index in checkbox_columns:
+            self.checkbox_columns[index] = False
 
         # Fixes sorting/clicking on the header items not working
         # https://stackoverflow.com/questions/18777554/why-wont-my-custom-qheaderview-allow-sorting
@@ -85,13 +96,15 @@ class CheckBoxHeader(QtWidgets.QHeaderView):
 
         # Draw the checkbox
         # see https://doc.qt.io/qt-5/qheaderview.html#sectionViewportPosition
-        x_start_pos = self.sectionViewportPosition(1)
-        if logicalIndex == 1:
+        
+        if logicalIndex in self.checkbox_columns:
+            x_start_pos = self.sectionViewportPosition(logicalIndex)
+
             option = QStyleOptionButton()
             option.rect = QRect(x_start_pos + 1, 3, 20, 20)
             option.state = QStyle.State_Enabled | QStyle.State_Active
 
-            if self.checked:
+            if self.checkbox_columns[logicalIndex]:
                 option.state |= QStyle.State_On
             else:
                 option.state |= QStyle.State_Off
@@ -99,31 +112,35 @@ class CheckBoxHeader(QtWidgets.QHeaderView):
             self.style().drawPrimitive(QStyle.PE_IndicatorCheckBox, option, painter)
 
     def mousePressEvent(self, event):
+        # Below is not necessary due to super() call, kept for reference
         # Likely need to implement manual sorting, as well as manual tracking of checkbox positions
         # i.e. use sortByColumn: https://doc.qt.io/qt-5/qtableview.html#sortByColumn
         # https://stackoverflow.com/questions/26775577/hidden-sort-indicator-on-column-in-qtreeview
-        x_start_pos = self.sectionViewportPosition(1)
-        rect = QRect(x_start_pos + 1, 3, 20, 20)
 
-        click_point = event.position().toPoint()
+        # Figure out if any of the column checkboxes were clicked, act if necessary
+        for column_index in self.checkbox_columns:
+            x_start_pos = self.sectionViewportPosition(column_index)
+            rect = QRect(x_start_pos + 1, 3, 20, 20)
 
-        # contains() only supports integer QPoints, not floating-point QPointF
-        if rect.contains(click_point):
-            self.setIsChecked(not self.checked)
+            click_point = event.position().toPoint()
 
-            print(dir(self.checkBoxClicked))
-            self.checkBoxClicked.emit()  # TODO: Tell parent about change
-
+            # contains() only supports integer QPoints, not floating-point QPointF
+            if rect.contains(click_point):
+                self.setIsChecked(column_index, not self.checkbox_columns[column_index]) # TODO: 1 is placeholder number
+                self.checkBoxClicked.emit(column_index, self.checkbox_columns[column_index])  # Tell parent about new state in column
+                return
+    
+        # If click event wasn't in a column checkbox:
         # Do the rest of the normal behavior of a mousePressEvent(), like sorting
         super().mousePressEvent(event)
 
-    def redrawCheckBox(self):
+    def redrawCheckBoxes(self):
         self.viewport().update()
 
-    def setIsChecked(self, val):
-        if self.checked != val:
-            self.checked = val
-            self.redrawCheckBox()
+    def setIsChecked(self, column_index, val):
+        if self.checkbox_columns[column_index] != val:
+            self.checkbox_columns[column_index] = val
+            self.redrawCheckBoxes()
 
 
 class SortFilterProxyModel(QSortFilterProxyModel):
@@ -290,8 +307,10 @@ class SongView(QTableView):
             self.setItemDelegateForColumn(column, delegate)
 
         # Use checkbox header
-        header = CheckBoxHeader(Qt.Horizontal, self)
+        header = CheckBoxHeader(Qt.Horizontal, box_columns, self)
         self.setHorizontalHeader(header)
+        # Signal from checkBoxHeader
+        header.checkBoxClicked.connect(lambda column_index, checked: self.update_data_from_checkbox_header(column_index, checked))
 
         # Resize row heights
         for row in range(0, self.table_model.rowCount(self)):
@@ -316,6 +335,14 @@ class SongView(QTableView):
         self.table_model.layoutAboutToBeChanged.emit()
         self.table_model.array_data = data
         self.table_model.layoutChanged.emit()
+
+    def update_data_from_checkbox_header(self, column_index, new_check_state):
+        # Get items currently visible in proxy
+        # Map from proxy to source
+        # Update applicable source rows
+        print(column_index, new_check_state)
+        
+        
 
 
 # Only for local execution
