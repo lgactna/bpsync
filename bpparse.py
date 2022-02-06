@@ -38,7 +38,7 @@ class BPSong:
         # No way to determine plays this month from XML data
         return cls(total_plays, 0, title, artist, album, filepath, addition_date, last_played)
 
-    def as_bpstat_line(self, path):
+    def as_bpstat_line(self, prefix_path):
         """Write as bpstat line with specified prepended filepath."""
         # Convert back to timestamp in milliseconds
         addition_date = int(datetime.timestamp(self.addition_date) * 1000)
@@ -50,7 +50,7 @@ class BPSong:
         else:
             last_played = int(datetime.timestamp(self.last_played) * 1000)
 
-        path = os.path.join(path, self.filepath)
+        path = os.path.join(prefix_path, self.filepath)
 
         return f"{self.total_plays};{self.plays_this_month};{self.title};{self.artist};" \
                f"{self.album};{path};{addition_date};{last_played}"
