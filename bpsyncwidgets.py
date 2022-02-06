@@ -78,7 +78,7 @@ class CheckBoxHeader(QtWidgets.QHeaderView):
         # TODO: improve clarity of this variable/design
         self.checkbox_columns = {}
         for index in checkbox_columns:
-            self.checkbox_columns[index] = False
+            self.checkbox_columns[index] = True
 
         # Fixes sorting/clicking on the header items not working
         # https://stackoverflow.com/questions/18777554/why-wont-my-custom-qheaderview-allow-sorting
