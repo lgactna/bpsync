@@ -54,7 +54,6 @@ class FirstTimeWindow(QtWidgets.QWidget,Ui_FirstTimeWindow):
         self.mp3_browse_button.clicked.connect(self.mp3_save_prompt)
         self.data_browse_button.clicked.connect(self.data_save_prompt)
         ## Table functionality
-        # TODO: fix this to match new function
         self.table_filter_lineedit.textChanged.connect(lambda text: self.table_widget.proxy.set_filter_text(text))
 
         # Table
@@ -64,7 +63,7 @@ class FirstTimeWindow(QtWidgets.QWidget,Ui_FirstTimeWindow):
         box_columns = [1, 2]
         filter_on = [3, 4, 5]
 
-        column_sizes = [50, 40, 40, 200, 120, 120, 50, 100, 200]
+        column_sizes = [50, 80, 80, 200, 120, 120, 50, 100, 200]
         
         ## Set up initial table contents and formatting
         self.table_widget.setup(headers, data, box_columns, filter_on)
