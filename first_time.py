@@ -235,7 +235,7 @@ class Ui_FirstTimeWindow(object):
 
         self.start_button = QPushButton(FirstTimeWindow)
         self.start_button.setObjectName(u"start_button")
-        self.start_button.setEnabled(False)
+        self.start_button.setEnabled(True)
 
         self.verticalLayout_3.addWidget(self.start_button)
 
