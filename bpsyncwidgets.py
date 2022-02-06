@@ -34,6 +34,9 @@ class CheckBoxDelegate(QtWidgets.QItemDelegate):
         Change the data in the model and the state of the checkbox
         if the user presses the left mousebutton and this cell is editable. Otherwise do nothing.
         """
+        import pprint
+        pprint.pprint(self.parent().table_model.array_data)
+
         if not int(index.flags() & QtCore.Qt.ItemIsEditable) > 0:
             return False
         if event.type() == QtCore.QEvent.Type.MouseButtonRelease and event.button() == Qt.MouseButton.LeftButton:
@@ -61,8 +64,8 @@ class CheckBoxDelegate(QtWidgets.QItemDelegate):
 class CheckBoxHeader(QtWidgets.QHeaderView):
     # https://stackoverflow.com/questions/2970312/pyqt4-qtcore-pyqtsignal-object-has-no-attribute-connect
     # custom signals must be class variables, not attribute variables
-    # Slot: logicalIndex, new_check_state
-    checkBoxClicked = QtCore.Signal(int, bool)
+    # Slot: logicalIndex, new_check_state (as int)
+    checkBoxClicked = QtCore.Signal(int, int)
 
     # adapted from https://stackoverflow.com/questions/21557913/checkbox-in-a-header-cell-in-qtableview
     def __init__(self, orientation, checkbox_columns, parent):
@@ -152,6 +155,7 @@ class SortFilterProxyModel(QSortFilterProxyModel):
 
     def __init__(self, *args, **kwargs):
         QSortFilterProxyModel.__init__(self, *args, **kwargs)
+        self.setDynamicSortFilter(False) # ???
 
     def filterAcceptsRow(self, source_row, source_parent):
         """
@@ -259,9 +263,7 @@ class SongView(QTableView):
     Additional defaults:
         - SelectionBehavior is QAbstractItemView.SelectRows
         - Last column is stretched to fit viewable table
-
     """
-
     # TODO: Create top-row used for unchecking and checking all, if checkboxes used
     #       See https://wiki.qt.io/Technical_FAQ#How_can_I_insert_a_checkbox_into_the_header_of_my_view.3F
     #       Or https://stackoverflow.com/questions/21557913/checkbox-in-a-header-cell-in-qtableview
@@ -313,6 +315,8 @@ class SongView(QTableView):
         header.checkBoxClicked.connect(lambda column_index, checked: self.update_data_from_checkbox_header(column_index, checked))
 
         # Resize row heights
+        # https://stackoverflow.com/questions/19304653/how-to-set-row-height-of-qtableview
+        # BUG: Filtering doesn't correctly call sort() so it goes out of order
         for row in range(0, self.table_model.rowCount(self)):
             self.setRowHeight(row, row_height)
 
@@ -340,6 +344,13 @@ class SongView(QTableView):
         # Get items currently visible in proxy
         # Map from proxy to source
         # Update applicable source rows
+        visible_rows = self.proxy.rowCount()
+
+        for row_index in range(visible_rows):
+            proxy_index = self.proxy.index(row_index, column_index)
+            source_index = self.proxy.mapToSource(proxy_index)
+            self.table_model.setData(source_index, new_check_state)
+
         print(column_index, new_check_state)
         
         
