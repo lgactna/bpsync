@@ -78,6 +78,7 @@ class Worker(QtCore.QRunnable):
             if track_id in tracking_ids:
                 bpsynctools.add_to_bpstat(song, bpstat_prefix, bpstat_path)
                 song_arr.append(song)
+            index += 1
 
         # Create database with new songs
         # TODO: Doesn't work - need to set up to be path-independent
@@ -124,6 +125,8 @@ class Worker(QtCore.QRunnable):
 """
 
 class FirstTimeWindow(QtWidgets.QWidget,Ui_FirstTimeWindow):
+    # TODO: right-click context menu with more information + volume edit
+    # TODO: extended info screen
     def __init__(self):
         super().__init__()
         
