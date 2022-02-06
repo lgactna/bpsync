@@ -73,6 +73,7 @@ def strip_semicolons(song_path):
 
     This check is used to prevent .bpstat files from failing to import.
     """
+    # TODO: check if this actually works
     out_file = load(song_path)
     for field in [out_file.tag.artist, out_file.tag.title, out_file.tag.album]:
         field = field.replace(";", "")
@@ -134,13 +135,17 @@ def first_sync_array_from_lib(lib):
     Assumes copying and tracking should be enabled.
     """
     # TODO: Decide on using *(length) or Y/N(length-length)
-    headers = ["Track ID", "Copy?", "Track?", "Title", "Artist", "Album", "Plays", "Trimmed?", "Filepath"]
+    headers = ["Track ID", "Copy?", "Track?", "Title", "Artist", "Album", "Plays", "Trimmed?", "Volume%", "Filepath"]
 
     data = []
     for track_id, song in lib.songs.items():
         play_count = song.play_count if song.play_count else 0
         trimmed = bool(song.start_time or song.stop_time)
-
-        data.append([track_id, 1, 1, song.name, song.artist, song.album, play_count, trimmed, song.location])
+        volume = 100
+        if song.volume_adjustment:
+            gain_factor = ((song.volume_adjustment + 255)/255)
+            volume = gain_factor*100
+        
+        data.append([track_id, 1, 1, song.name, song.artist, song.album, play_count, trimmed, volume, song.location])
 
     return data
