@@ -69,8 +69,6 @@ class FirstTimeWindow(QtWidgets.QWidget,Ui_FirstTimeWindow):
         self.table_widget.setup(headers, data, box_columns, filter_on)
         self.table_widget.set_column_widths(column_sizes)
 
-        # TODO: React to all fields being properly set up
-
     def xml_open_prompt(self):
         file_name, _ = QtWidgets.QFileDialog.getOpenFileName(self, "Open XML", self.program_path,
                 "XML (*.xml);;All Files (*)")
