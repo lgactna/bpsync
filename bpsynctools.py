@@ -5,6 +5,7 @@ Various convenience functions
 import os
 from shutil import copy2
 from datetime import datetime
+from math import log10
 import logging
 
 from pydub import AudioSegment
@@ -12,6 +13,8 @@ from pydub.utils import mediainfo
 from eyed3 import load
 
 import bpparse
+
+logger = logging.getLogger(__name__)
 
 def copy_and_process_song(song, output_folder='tmp'):
     """
@@ -31,7 +34,7 @@ def copy_and_process_song(song, output_folder='tmp'):
     output_path = os.path.join(output_folder, song.persistent_id + ".mp3")
 
     try:
-        if file_extension != ".mp3" or song.start_time or song.stop_time:
+        if file_extension != ".mp3" or song.start_time or song.stop_time or song.volume_adjustment:
             obj = AudioSegment.from_file(song.location)
 
             if song.start_time or song.stop_time:
@@ -40,7 +43,19 @@ def copy_and_process_song(song, output_folder='tmp'):
 
                 obj = obj[start_time:stop_time]
 
-                print(f"Trimmed {song.persistent_id} ({output_path})")
+                logging.info(f"Trimmed {song.persistent_id} ({output_path})")
+            
+            if song.volume_adjustment:
+                # internally stored as an integer between -255 and 255
+                # but can physically be adjusted past 255
+                if song.volume_adjustment <= -255:
+                    obj = obj - 100  # essentially silent
+                    logging.warning(f"The song {song.name} has a volume adjustment value less than -255 and is silent!")
+                else:
+                    gain_factor = (song.volume_adjustment + 255)/255
+                    decibel_change = 10 * log10(gain_factor)
+                    obj = obj + decibel_change
+                    logging.info(f"Changed {song.title} gain factor by {gain_factor} ({decibel_change} dB)")
 
             # tags parameter is used for retaining metadata
             obj.export(output_path, format="mp3", tags=mediainfo(song.location)['TAG'])
@@ -48,6 +63,9 @@ def copy_and_process_song(song, output_folder='tmp'):
             copy2(song.location, output_path)
     except FileNotFoundError as e:
         logging.error(f"Couldn't find {song.location}")
+    
+    if check_for_semicolons(song):
+        strip_semicolons(output_path)    
 
 def strip_semicolons(song_path):
     """
@@ -60,6 +78,20 @@ def strip_semicolons(song_path):
         field = field.replace(";", "")
 
     out_file.tag.save(version=(2,3,0))
+
+def check_for_semicolons(song):
+    """
+    Check for semicolons in a given Song object, warn and return True if present.
+
+    :param song: The libpytunes Song object to use for processing.
+    """
+
+    for field in [song.artist, song.name, song.album]:
+        if field and ";" in field:
+            logging.warn(f"Semicolon detected in {song.name=} ({song.persistent_id=})! "
+                         f"This can cause .bpstat imports to fail.")
+            return True
+    return False
 
 def add_to_bpstat(song, target_folder, bpstat_path):
     """
