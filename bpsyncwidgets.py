@@ -314,12 +314,13 @@ class SongView(QTableView):
         # Signal from checkBoxHeader
         header.checkBoxClicked.connect(lambda column_index, checked: self.update_data_from_checkbox_header(column_index, checked))
 
-        # Resize row heights
+        # Set standard row height
         # https://stackoverflow.com/questions/19304653/how-to-set-row-height-of-qtableview
         # BUG: Filtering doesn't correctly call sort() so it goes out of order
-        for row in range(0, self.table_model.rowCount(self)):
-            self.setRowHeight(row, row_height)
-
+        vertical_header = self.verticalHeader()
+        vertical_header.setSectionResizeMode(QHeaderView.Fixed)
+        vertical_header.setDefaultSectionSize(row_height)
+        
         # Stretch last section
         self.horizontalHeader().setStretchLastSection(True)
 
