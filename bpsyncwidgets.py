@@ -4,7 +4,12 @@ from PySide6.QtGui import *
 
 from PySide6 import QtCore, QtWidgets
 
+from progress import Ui_ProcessingProgress
 
+import time
+import logging
+
+# region SongView
 class CheckBoxDelegate(QtWidgets.QItemDelegate):
     """
     A delegate that places a checkbox in the cells of the column to which it's applied.
@@ -355,9 +360,12 @@ class SongView(QTableView):
             source_index = self.proxy.mapToSource(proxy_index)
             self.table_model.setData(source_index, new_check_state)
         
-        
+# endregion
+
+# region Other top-level widgets
+
 # Only for local execution
-class TestWidget(QWidget):
+class TestTable(QWidget):
     def __init__(self, *args, **kwargs):
         QWidget.__init__(self, *args, **kwargs)
         self.setLayout(QVBoxLayout())
@@ -375,11 +383,29 @@ class TestWidget(QWidget):
 
         column_sizes = [50, 40, 40, 200, 120, 120, 50, 100, 200]
 
+        # For deltas
+        headers_delta = ["Track ID", "Title", "Artist", "Album", "Base plays", "XML plays", "BP plays", "Delta", "New playcount", "Persistent ID"]
+        data_delta = [
+            [23, "image material", "tatsh", "zephyr", 52, 64, 66, "+36", 88, "as546sfda654fsad465fsd"],
+            [37, "the world's end", "horie yui", "zephyr", 52, 64, 66, "+40", 72, "as546sfda654fsad465fsd"],
+            [316, "oceanus", "cosmo@bosoup", "deemo", 52, 64, 66, "+36", 89, "as546sfda654fsad465fsd"],
+            [521,"wow", "eien-p", "r", 52, 66, 65, "+58", 34, "as546sfda654fsad465fsd"],
+        ]
+        box_columns_delta = []
+        filter_on_delta = [1, 2, 3, 9]
+
+        column_sizes_delta = [50, 200, 120, 120, 80, 80, 80, 80, 100, 200]
+
         # Initialize SongView, add to window's layout
         tv1 = SongView()
         tv1.setup(headers, data, box_columns, filter_on)
         tv1.set_column_widths(column_sizes)
         self.layout().addWidget(tv1)
+
+        tv2 = SongView()
+        tv2.setup(headers_delta, data_delta, box_columns_delta, filter_on_delta)
+        tv2.set_column_widths(column_sizes_delta)
+        self.layout().addWidget(tv2)
 
         # Add form layout
         flayout = QFormLayout()
@@ -389,13 +415,117 @@ class TestWidget(QWidget):
         self.le = QLineEdit(self)
         flayout.addRow("Search", self.le)
         # On LineEdit change, reset the proxy's filter (which also implicitly runs FilterAcceptsRow())
-        self.le.textChanged.connect(lambda text: tv1.proxy.set_filter_text(text))
+        self.le.textChanged.connect(lambda text: tv2.proxy.set_filter_text(text))
 
+class WorkerConnection(QtCore.QObject):
+    # https://stackoverflow.com/questions/53056096/pyside2-qtcore-signal-object-has-no-attribute-connect
+    # QRunnables are not QObjects and therefore cannot have their own signals
+    songStartedProcessing = QtCore.Signal(int, str)
+
+class LoggerConnection(QtCore.QObject):
+    # Fixes emit() conflict due to multiple inheritance
+    # https://stackoverflow.com/questions/52479442/running-a-long-python-calculation-in-a-thread-with-logging-to-a-qt-window-cras/52492689#52492689
+    appendPlainText = QtCore.Signal(str)
+
+class TestWorker(QtCore.QRunnable):
+    #slot: index in processing array, string of artist-song
+    
+    '''
+    Worker thread
+
+    :param args: Arguments to make available to the run code
+    :param kwargs: Keywords arguments to make available to the run code
+    '''
+
+    def __init__(self, *args, **kwargs):
+        super(TestWorker, self).__init__()
+        self.args = args
+        self.kwargs = kwargs
+        self.connection = WorkerConnection()
+
+    #@QtCore.Slot()
+    def run(self):
+        for i in range(1000):
+            logging.warning("test")
+            self.connection.songStartedProcessing.emit(i, f"Test song {i}")
+            #self.signal.test_signal.emit(i, f"Test song {i}")
+            time.sleep(1)
+
+# https://stackoverflow.com/a/60528393
+class ProgressWindow(logging.Handler, QtWidgets.QWidget, Ui_ProcessingProgress):
+    """
+    Progress window. Call updateFields() via slot from a worker thread.
+
+    Supports setup as a logger:
+    logging.getLogger().addHandler(<instance of ProgressWindow>)
+
+    :param maximum: The maximum value of the progress bar.
+    """
+    def __init__(self, maximum): # top-level widget, no "parent"
+        # Setup three parent classes + UI
+        super().__init__()
+        QtWidgets.QWidget.__init__(self)
+        
+        self.setWindowModality(QtCore.Qt.ApplicationModal) 
+        self.setupUi(self)
+
+        # Setup slot for log_box
+        self.logger_connection = LoggerConnection()
+        self.logger_connection.appendPlainText.connect(self.log_box.appendPlainText)
+
+        # Initialize progress bar to specified max
+        self.maximum = maximum
+        self.progress_bar.setMaximum(maximum)
+        self.progress_bar.setValue(0) # Just in case
+
+        self.song_label.setText("Waiting...")
+        self.progress_label.setText(f"(0/{maximum})")
+
+        # Set up logger
+        self.setFormatter(logging.Formatter('%(asctime)s - %(levelname)s - %(message)s'))
+        logging.getLogger().addHandler(self)
+        logging.getLogger().setLevel(logging.DEBUG)
+
+    def updateFields(self, new_progress, new_string):
+        """
+        Update the text field and progress bar.
+
+        :param new_progress: An int of the index currently being processed.
+        :param new_string: The text to show as the current song being processed.
+        """
+        self.progress_label.setText(new_progress)
+        self.song_label.setText(new_string)
+        self.progress_bar.setValue(new_progress)
+        print(new_progress, new_string)
+    
+    def emit(self, record):
+        """For logging support"""
+        # https://stackoverflow.com/questions/28655198/best-way-to-display-logs-in-pyqt
+        msg = self.format(record)
+        self.logger_connection.appendPlainText.emit(msg)
+
+# endregion
 
 if __name__ == '__main__':
     import sys
 
     app = QApplication(sys.argv)
-    w = TestWidget()
+
+    # Table test
+    # https://stackoverflow.com/a/60528393 for correct implementation
+    # w = TestTable()
+    
+    
+    # Threading test
+    thread_manager = QtCore.QThreadPool()
+    w = ProgressWindow(1000)
+
+    #logging.getLogger().addHandler(w)
+    #logging.getLogger().setLevel(logging.DEBUG)
+
+    worker = TestWorker()
+    worker.connection.songStartedProcessing.connect(lambda: w.updateFields)
+    thread_manager.start(worker)
+    
     w.show()
     sys.exit(app.exec())
