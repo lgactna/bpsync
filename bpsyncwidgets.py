@@ -449,7 +449,7 @@ class TestWorker(QtCore.QRunnable):
             logging.warning("test")
             self.connection.songStartedProcessing.emit(i, f"Test song {i}")
             #self.signal.test_signal.emit(i, f"Test song {i}")
-            time.sleep(1)
+            time.sleep(0.1)
 
 # https://stackoverflow.com/a/60528393
 class ProgressWindow(logging.Handler, QtWidgets.QWidget, Ui_ProcessingProgress):
@@ -493,10 +493,9 @@ class ProgressWindow(logging.Handler, QtWidgets.QWidget, Ui_ProcessingProgress):
         :param new_progress: An int of the index currently being processed.
         :param new_string: The text to show as the current song being processed.
         """
-        self.progress_label.setText(new_progress)
+        self.progress_label.setText(f"({new_progress}/{self.maximum})")
         self.song_label.setText(new_string)
         self.progress_bar.setValue(new_progress)
-        print(new_progress, new_string)
     
     def emit(self, record):
         """For logging support"""
@@ -524,7 +523,7 @@ if __name__ == '__main__':
     #logging.getLogger().setLevel(logging.DEBUG)
 
     worker = TestWorker()
-    worker.connection.songStartedProcessing.connect(lambda: w.updateFields)
+    worker.connection.songStartedProcessing.connect(lambda a, b: w.updateFields(a, b))
     thread_manager.start(worker)
     
     w.show()
