@@ -523,7 +523,7 @@ if __name__ == '__main__':
     #logging.getLogger().setLevel(logging.DEBUG)
 
     worker = TestWorker()
-    worker.connection.songStartedProcessing.connect(lambda a, b: w.updateFields(a, b))
+    worker.connection.songStartedProcessing.connect(lambda progress_val, song_string: w.updateFields(progress_val, song_string))
     thread_manager.start(worker)
     
     w.show()
