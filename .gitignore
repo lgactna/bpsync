@@ -137,3 +137,6 @@ data/
 /BlackPlayer Free Track Statistics.bpstat
 /.idea
 /.qt_for_python
+*.bpstat
+*.xml
+*.db
