@@ -6,6 +6,7 @@ import os
 from shutil import copy2
 from datetime import datetime
 from math import log10
+from pathlib import Path
 import logging
 
 from pydub import AudioSegment
@@ -30,11 +31,17 @@ def copy_and_process_song(song, output_folder='tmp'):
     If the Song object is not an mp3 file or has been trimmed, the song is processed using
     pydub and requires ffmpeg/libav.
     """
+    # affirm output_folder (and any parent folders, if specified) exists, and make it if it doesn't exist
+    # https://docs.python.org/3/library/pathlib.html#pathlib.Path.mkdir
+    Path(output_folder).mkdir(parents=True, exist_ok=True)
+
+    # define output paths
     _, file_extension = os.path.splitext(song.location)
     output_path = os.path.join(output_folder, song.persistent_id + ".mp3")
 
     try:
         if file_extension != ".mp3" or song.start_time or song.stop_time or song.volume_adjustment:
+            logging.info(f"{song.persistent_id} needs to be processed by pydub ({output_path})")
             obj = AudioSegment.from_file(song.location)
 
             if song.start_time or song.stop_time:
@@ -43,7 +50,7 @@ def copy_and_process_song(song, output_folder='tmp'):
 
                 obj = obj[start_time:stop_time]
 
-                logging.info(f"Trimmed {song.persistent_id} ({output_path})")
+                logging.info(f"Trimmed {song.persistent_id}")
             
             if song.volume_adjustment:
                 # internally stored as an integer between -255 and 255
@@ -60,6 +67,7 @@ def copy_and_process_song(song, output_folder='tmp'):
             # tags parameter is used for retaining metadata
             obj.export(output_path, format="mp3", tags=mediainfo(song.location)['TAG'])
         else:
+            logging.info(f"{song.persistent_id} does not need to be processed and was directly copied ({output_path})")
             copy2(song.location, output_path)
     except FileNotFoundError as e:
         logging.error(f"Couldn't find {song.location}")

@@ -1,13 +1,26 @@
+"""
+Definitions for all custom Qt objects used in this project.
+"""
 from PySide6.QtWidgets import *
 from PySide6.QtCore import *
 from PySide6.QtGui import *
 
 from PySide6 import QtCore, QtWidgets
 
-from progress import Ui_ProcessingProgress
-
+import os
+from datetime import datetime
 import time
 import logging
+
+from pydub import AudioSegment
+from pydub.utils import mediainfo
+import eyed3
+
+import bpsynctools
+import bpparse
+import models
+
+from progress import Ui_ProcessingProgress
 
 # region SongView
 class CheckBoxDelegate(QtWidgets.QItemDelegate):
@@ -417,41 +430,115 @@ class TestTable(QWidget):
         # On LineEdit change, reset the proxy's filter (which also implicitly runs FilterAcceptsRow())
         self.le.textChanged.connect(lambda text: tv2.proxy.set_filter_text(text))
 
-class WorkerConnection(QtCore.QObject):
+
+class SongWorkerConnection(QtCore.QObject):
+    """
+    Connection for SongWorker; provides signal for updating the progress window.
+    
+    On an instance of WorkerConnection in SongWorker, do `songStartedProcessing.emit(progress_int, progress_str)`.
+    Intended to be used with an instance of ProgressWindow, connected in a way such as the following:
+
+    `worker.connection.songStartedProcessing.connect(lambda a, b: w.updateFields(a, b))`
+    """
     # https://stackoverflow.com/questions/53056096/pyside2-qtcore-signal-object-has-no-attribute-connect
     # QRunnables are not QObjects and therefore cannot have their own signals
     songStartedProcessing = QtCore.Signal(int, str)
 
-class LoggerConnection(QtCore.QObject):
+
+class ProgressWindowConnection(QtCore.QObject):
+    """
+    Connection for ProgressWindow; provides signal for updating the log box.
+
+    In ProgressWindow:
+    self.logger_connection = LoggerConnection()
+    self.logger_connection.appendPlainText.connect(self.log_box.appendPlainText)
+
+    The logger must also be setup within ProgressWindow.
+
+    This resolves a multiple inheritance conflict in ProgressWindow due to emit().
+    """
     # Fixes emit() conflict due to multiple inheritance
     # https://stackoverflow.com/questions/52479442/running-a-long-python-calculation-in-a-thread-with-logging-to-a-qt-window-cras/52492689#52492689
     appendPlainText = QtCore.Signal(str)
 
+
 class TestWorker(QtCore.QRunnable):
-    #slot: index in processing array, string of artist-song
-    
-    '''
-    Worker thread
+    """
+    Basic worker thread for testing threading functionality with slots.
 
     :param args: Arguments to make available to the run code
     :param kwargs: Keywords arguments to make available to the run code
-    '''
-
+    """
     def __init__(self, *args, **kwargs):
         super(TestWorker, self).__init__()
         self.args = args
         self.kwargs = kwargs
-        self.connection = WorkerConnection()
+        self.signal_connection = SongWorkerConnection()
 
     #@QtCore.Slot()
     def run(self):
         for i in range(1000):
             logging.warning("test")
-            self.connection.songStartedProcessing.emit(i, f"Test song {i}")
+            self.signal_connection.songStartedProcessing.emit(i, f"Test song {i}")
             #self.signal.test_signal.emit(i, f"Test song {i}")
             time.sleep(0.1)
 
-# https://stackoverflow.com/a/60528393
+class SongWorker(QtCore.QRunnable):
+    """
+    Worker thread for processing songs.
+
+    Expects the following, all as positional args:
+     - a libpytunes Library object
+     - a list of track IDs to process
+     - a list of track IDs to add to the local database
+     - the target directory to write newly processed/copied songs
+     - the target directory to write app data (database, new XMLs, .bpstats, etc.)
+     - the filepath prefix to use in the .bpstat itself
+    """
+    def __init__(self, *args, **kwargs):
+        super(SongWorker, self).__init__()
+        self.args = args
+        self.kwargs = kwargs
+        self.signal_connection = SongWorkerConnection()
+
+    #@QtCore.Slot()
+    def run(self):
+        lib, processing_ids, tracking_ids, mp3_target_directory, data_directory, bpstat_prefix = self.args
+
+        bpstat_name = datetime.now().strftime("%Y-%m-%d %H-%M-%S (new).bpstat")
+        bpstat_path = os.path.join(data_directory, bpstat_name)
+
+        os.makedirs(data_directory, exist_ok=True)
+        os.makedirs(mp3_target_directory, exist_ok=True)
+        # bpstat generation and processing can happen at the same time
+        song_arr = []
+
+        max_to_track = len(tracking_ids)
+
+        # iterate only over ids to process, which is the longest task
+        for index, track_id in enumerate(tracking_ids):
+            song = lib.songs[track_id]
+
+            logging.info(f"Added {song.name} ({song.persistent_id}) to database for tracking ({index + 1}/{max_to_track})")
+            
+            bpsynctools.add_to_bpstat(song, bpstat_prefix, bpstat_path)
+            song_arr.append(song)
+
+        for index, track_id in enumerate(processing_ids):
+            song = lib.songs[track_id]
+
+            logging.info(f"Processing {song.name} ({song.persistent_id})")
+            self.signal_connection.songStartedProcessing.emit(index + 1, f"{song.artist} - {song.name}")
+            
+            bpsynctools.copy_and_process_song(song)
+            
+        # Create database with new songs
+        # TODO: Doesn't work - need to set up to be path-independent
+        #models.set_engine(data_directory)
+        models.create_db()
+        models.add_libpy_songs(song_arr)
+
+
 class ProgressWindow(logging.Handler, QtWidgets.QWidget, Ui_ProcessingProgress):
     """
     Progress window. Call updateFields() via slot from a worker thread.
@@ -461,6 +548,7 @@ class ProgressWindow(logging.Handler, QtWidgets.QWidget, Ui_ProcessingProgress):
 
     :param maximum: The maximum value of the progress bar.
     """
+    # Derived with help from https://stackoverflow.com/a/60528393 and its comments
     def __init__(self, maximum): # top-level widget, no "parent"
         # Setup three parent classes + UI
         super().__init__()
@@ -470,7 +558,7 @@ class ProgressWindow(logging.Handler, QtWidgets.QWidget, Ui_ProcessingProgress):
         self.setupUi(self)
 
         # Setup slot for log_box
-        self.logger_connection = LoggerConnection()
+        self.logger_connection = ProgressWindowConnection()
         self.logger_connection.appendPlainText.connect(self.log_box.appendPlainText)
 
         # Initialize progress bar to specified max
@@ -478,13 +566,13 @@ class ProgressWindow(logging.Handler, QtWidgets.QWidget, Ui_ProcessingProgress):
         self.progress_bar.setMaximum(maximum)
         self.progress_bar.setValue(0) # Just in case
 
-        self.song_label.setText("Waiting...")
+        self.song_label.setText("Waiting on database...")
         self.progress_label.setText(f"(0/{maximum})")
 
         # Set up logger
-        self.setFormatter(logging.Formatter('%(asctime)s - %(levelname)s - %(message)s'))
+        self.setFormatter(logging.Formatter('%(asctime)s [%(levelname)s] - %(message)s'))
         logging.getLogger().addHandler(self)
-        logging.getLogger().setLevel(logging.DEBUG)
+        logging.getLogger().setLevel(logging.INFO)
 
     def updateFields(self, new_progress, new_string):
         """
@@ -523,7 +611,7 @@ if __name__ == '__main__':
     #logging.getLogger().setLevel(logging.DEBUG)
 
     worker = TestWorker()
-    worker.connection.songStartedProcessing.connect(lambda progress_val, song_string: w.updateFields(progress_val, song_string))
+    worker.signal_connection.songStartedProcessing.connect(lambda progress_val, song_string: w.updateFields(progress_val, song_string))
     thread_manager.start(worker)
     
     w.show()
