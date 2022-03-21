@@ -12,10 +12,14 @@ import logging
 from pydub import AudioSegment
 from pydub.utils import mediainfo
 from eyed3 import load
+import sqlalchemy.orm.exc
 
 import bpparse
+import models
 
 logger = logging.getLogger(__name__)
+
+# region Processing
 
 def copy_and_process_song(song, output_folder='tmp'):
     """
@@ -116,6 +120,8 @@ def add_to_bpstat(song, bpstat_prefix, bpstat_path):
     with open(bpstat_path, "ab") as fp:
         fp.write(output.encode('utf-8'))
 
+# endregion
+
 def create_backup(file_path, output_folder='backups'):
     """
     Creates a backup of the specified file, usually a bpstat or XML.
@@ -134,11 +140,13 @@ def create_backup(file_path, output_folder='backups'):
 
     copy2(file_path, out_path)
 
-def first_sync_array_from_lib(lib):
+# region Utility
+
+def first_sync_array_from_libpysongs(songs):
     """
     Creates a 2D array suitable for use with the SongView in the first-time sync window.
 
-    :param lib: A libpytunes Library object.
+    :param lib: A dict of libpytunes Song objects, with the track ID as keys.
 
     Assumes copying and tracking should be enabled.
     """
@@ -146,7 +154,7 @@ def first_sync_array_from_lib(lib):
     headers = ["Track ID", "Copy?", "Track?", "Title", "Artist", "Album", "Plays", "Trimmed?", "Volume%", "Filepath"]
 
     data = []
-    for track_id, song in lib.songs.items():
+    for track_id, song in songs.items():
         play_count = song.play_count if song.play_count else 0
         trimmed = bool(song.start_time or song.stop_time)
         volume = 100
@@ -157,3 +165,58 @@ def first_sync_array_from_lib(lib):
         data.append([track_id, 1, 1, song.name, song.artist, song.album, play_count, trimmed, volume, song.location])
 
     return data
+
+def standard_sync_arrays_from_data(library, bpstat_songs, db_songs):
+    """
+    Creates the two 2D arrays used to create the standard sync tables.
+
+    Occurs in about four steps, two of which are done in the UI function:
+    - Start by trying to load/open all three files. Raise RuntimeError (or another exception) if fail.
+    - Get all internal database song objects.
+
+    The following are done here:
+    - For each song in the XML:
+        - If there exists an entry by persistent ID in both the bpstat and database:
+            - Calculate (but do not update) the delta and create a row for the first table.
+        - If not:
+            - Add that specific Song entry to a separate dictionary
+    - Call the first-sync-array function above to create the second table's rows.
+    """
+    session = models.Session() # to make db_songs, the engine must already have been initialized
+
+    # create dict for bpstat songs, by persistent id
+    bpsongs = {}
+    for bpsong in bpstat_songs:
+        bpsongs[bpsong.get_persistent_id()] = bpsong
+
+    # start checking in both
+    new_songs = {}
+    existing_songs_rows = []
+    for track_id, song in library.songs.items():
+        # check if the song exists in both the bpstat and the database
+        try:
+            stored_song = session.query(models.StoredSong).filter(models.StoredSong.persistent_id==song.persistent_id).scalar()
+            bpstat_song = bpsongs[song.persistent_id]
+
+            if not stored_song:
+                raise KeyError() # same behavior as bpstat_song throwing a KeyError
+        except sqlalchemy.orm.exc.MultipleResultsFound:
+            logging.error("Database has multiple entries of the same ID?")
+            continue
+        except KeyError:
+            new_songs[track_id] = song
+            continue
+
+        # if it gets here, then the song is being tracked
+        ["Track ID", "Title", "Artist", "Album", "Base plays", "XML plays", "BP plays", "Delta", "New playcount", "Persistent ID"]
+        play_count = song.play_count if song.play_count else 0
+        delta = stored_song.get_delta(play_count, bpstat_song.total_plays)
+        existing_songs_rows.append([track_id, song.name, song.artist, song.album, stored_song.last_playcount, play_count,
+                                   bpstat_song.total_plays, delta, stored_song.last_playcount+delta, song.persistent_id])
+
+    # create data for first-time from dict
+    new_songs_rows = first_sync_array_from_libpysongs(new_songs)
+
+    return existing_songs_rows, new_songs_rows
+
+# endregion

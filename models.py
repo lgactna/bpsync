@@ -10,6 +10,7 @@ in the future, if it's ever necessary to make this more robust:
 
 import logging
 import os
+from pathlib import Path
 
 from sqlalchemy import Table, Column, Integer, String
 from sqlalchemy import create_engine
@@ -28,11 +29,11 @@ Base = declarative_base()
 class StoredSong(Base):
     __tablename__ = 'songs'
 
-    id = Column(String(20), primary_key=True)
+    persistent_id = Column(String(20), primary_key=True)
     last_playcount = Column(Integer, nullable=False)
 
     def __repr__(self):
-        return f"{self.id=} {self.last_playcount=}"
+        return f"{self.persistent_id=} {self.last_playcount=}"
 
     def get_delta(self, xml_pc, bpstat_pc):
         xml_diff = xml_pc-self.last_playcount  # New plays on XML side
@@ -40,7 +41,7 @@ class StoredSong(Base):
         delta = xml_diff + bpstat_diff
 
         if delta < 0:
-            logger.error(f"Playcount for {id=} has gone down? {self.last_playcount=} {xml_pc=} {bpstat_pc=}")
+            logger.error(f"Playcount for {persistent_id=} has gone down? {self.last_playcount=} {xml_pc=} {bpstat_pc=}")
 
         return delta
 
@@ -48,14 +49,21 @@ class StoredSong(Base):
         delta = self.get_delta(xml_pc, bpstat_pc)
         self.last_playcount += delta
 
-def initialize_engine(folderpath):
+def initialize_engine(filepath):
     """
-    Initialize the engine to the specified path, where songs.db is always the filename.
+    Initialize the engine to the specified path, where songs.db is the default filename.
     
+    This *must* be called before performing any database actions.
+
     Also initializes a sessionmaker."""
     global engine, Session
-    output_path = os.path.join(folderpath, "songs.db")
-    engine = create_engine(f"sqlite+pysqlite:///{output_path}", echo=True, future=True)
+
+    filename = Path(filepath).stem
+    if filename:
+        engine = create_engine(f"sqlite+pysqlite:///{filepath}", echo=True, future=True)
+    else:
+        output_path = os.path.join(filepath, "songs.db")
+        engine = create_engine(f"sqlite+pysqlite:///{output_path}", echo=True, future=True)
     Session = sessionmaker(engine)
 
 def create_db():
