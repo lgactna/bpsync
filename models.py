@@ -9,19 +9,21 @@ in the future, if it's ever necessary to make this more robust:
 """
 
 import logging
+import os
 
 from sqlalchemy import Table, Column, Integer, String
 from sqlalchemy import create_engine
 
-from sqlalchemy.orm import declarative_base, Session
+from sqlalchemy.orm import declarative_base, sessionmaker
 
 logger = logging.getLogger(__name__)
 
 # setup/config
-# TODO: un-hardcode the database location
-engine = create_engine("sqlite+pysqlite:///data\\songs.db", echo=True, future=True)
+# https://stackoverflow.com/questions/63368099/a-proper-place-for-sql-alchemys-engine-global
+# https://docs.sqlalchemy.org/en/13/orm/session_basics.html#session-frequently-asked-questions
+engine = None
+Session = None
 Base = declarative_base()
-
 
 class StoredSong(Base):
     __tablename__ = 'songs'
@@ -46,9 +48,22 @@ class StoredSong(Base):
         delta = self.get_delta(xml_pc, bpstat_pc)
         self.last_playcount += delta
 
+def initialize_engine(folderpath):
+    """
+    Initialize the engine to the specified path, where songs.db is always the filename.
+    
+    Also initializes a sessionmaker."""
+    global engine, Session
+    output_path = os.path.join(folderpath, "songs.db")
+    engine = create_engine(f"sqlite+pysqlite:///{output_path}", echo=True, future=True)
+    Session = sessionmaker(engine)
 
 def create_db():
-    """Create a new database from an array of libpytunes Song objects."""
+    """
+    Create a new database from an array of libpytunes Song objects.
+    
+    Should only be used on first-time sync, where the database does not already exist.
+    """
     Base.metadata.create_all(engine)
 
 def add_libpy_songs(songs):
@@ -57,11 +72,11 @@ def add_libpy_songs(songs):
     new_songs = [StoredSong(id=song.persistent_id, 
                             last_playcount=song.play_count if song.play_count else 0)
                  for song in songs]
-    with Session(engine) as session:
+    with Session() as session:
         session.bulk_save_objects(new_songs)
         session.commit()
 
 def commit_changes():
     """Commit changes to database."""
-    with Session(engine) as session:
+    with Session() as session:
         session.commit()

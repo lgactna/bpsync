@@ -461,7 +461,7 @@ class ProgressWindowConnection(QtCore.QObject):
     # https://stackoverflow.com/questions/52479442/running-a-long-python-calculation-in-a-thread-with-logging-to-a-qt-window-cras/52492689#52492689
     appendPlainText = QtCore.Signal(str)
 
-
+# Only for local execution
 class TestWorker(QtCore.QRunnable):
     """
     Basic worker thread for testing threading functionality with slots.
@@ -482,6 +482,7 @@ class TestWorker(QtCore.QRunnable):
             self.signal_connection.songStartedProcessing.emit(i, f"Test song {i}")
             #self.signal.test_signal.emit(i, f"Test song {i}")
             time.sleep(0.1)
+
 
 class SongWorker(QtCore.QRunnable):
     """
@@ -531,10 +532,11 @@ class SongWorker(QtCore.QRunnable):
             self.signal_connection.songStartedProcessing.emit(index + 1, f"{song.artist} - {song.name}")
             
             bpsynctools.copy_and_process_song(song)
+        
+        self.signal_connection.songStartedProcessing.emit(len(processing_ids), f"Processing complete - you can close this window.")
             
         # Create database with new songs
-        # TODO: Doesn't work - need to set up to be path-independent
-        #models.set_engine(data_directory)
+        models.initialize_engine(data_directory)
         models.create_db()
         models.add_libpy_songs(song_arr)
 
@@ -590,6 +592,7 @@ class ProgressWindow(logging.Handler, QtWidgets.QWidget, Ui_ProcessingProgress):
         # https://stackoverflow.com/questions/28655198/best-way-to-display-logs-in-pyqt
         msg = self.format(record)
         self.logger_connection.appendPlainText.emit(msg)
+
 
 # endregion
 
