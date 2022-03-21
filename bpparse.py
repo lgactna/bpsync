@@ -2,6 +2,7 @@ import time
 from datetime import datetime
 import logging
 import os
+from pathlib import Path
 
 logger = logging.getLogger(__name__)
 
@@ -54,7 +55,26 @@ class BPSong:
 
         return f"{self.total_plays};{self.plays_this_month};{self.title};{self.artist};" \
                f"{self.album};{path};{addition_date};{last_played}"
+    
+    def get_persistent_id(self):
+        """
+        Strip out the persistent ID out of the filepath, if available.
 
+        This really just returns the file name without the extension, with minimal validation:
+        - The file name is a valid hexadecimal number.
+        - The file name is 16 characters long.
+
+        Returns None if the above fail.
+        """
+        filename = Path(self.filepath).stem
+        try:
+            int(filename, 16)
+            if len(filename) != 16:
+                raise ValueError()
+
+            return filename
+        except ValueError:
+            return None
 
 def get_songs(filepath):
     """
