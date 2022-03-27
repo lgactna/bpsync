@@ -114,7 +114,7 @@ class CheckBoxHeader(QtWidgets.QHeaderView):
 
         # Draw the checkbox
         # see https://doc.qt.io/qt-5/qheaderview.html#sectionViewportPosition
-        
+
         if logicalIndex in self.checkbox_columns:
             x_start_pos = self.sectionViewportPosition(logicalIndex)
 
@@ -147,7 +147,7 @@ class CheckBoxHeader(QtWidgets.QHeaderView):
                 self.setIsChecked(column_index, not self.checkbox_columns[column_index]) # TODO: 1 is placeholder number
                 self.checkBoxClicked.emit(column_index, self.checkbox_columns[column_index])  # Tell parent about new state in column
                 return
-    
+
         # If click event wasn't in a column checkbox:
         # Do the rest of the normal behavior of a mousePressEvent(), like sorting
         super().mousePressEvent(event)
@@ -199,7 +199,7 @@ class SortFilterProxyModel(QSortFilterProxyModel):
         self.setFilterRegularExpression(reg_exp)
         # Fixes proxy not maintaining sorting after unfiltering
         self.sort(self.sortColumn(), self.sortOrder())
-        
+
 class SongTableModel(QAbstractTableModel):
     """
     Adapted from the following: 
@@ -372,7 +372,7 @@ class SongView(QTableView):
             proxy_index = self.proxy.index(row_index, column_index)
             source_index = self.proxy.mapToSource(proxy_index)
             self.table_model.setData(source_index, new_check_state)
-        
+
 # endregion
 
 # region Other top-level widgets
@@ -496,49 +496,121 @@ class SongWorker(QtCore.QRunnable):
      - the target directory to write app data (database, new XMLs, .bpstats, etc.)
      - the filepath prefix to use in the .bpstat itself
     """
-    def __init__(self, *args, **kwargs):
+    def __init__(self, lib, processing_ids, tracking_ids, mp3_target_directory, data_directory, bpstat_prefix):
         super(SongWorker, self).__init__()
-        self.args = args
-        self.kwargs = kwargs
+
+        self.lib = lib
+        self.processing_ids = processing_ids
+        self.tracking_ids = tracking_ids
+        self.mp3_target_directory = mp3_target_directory
+        self.data_directory = data_directory
+        self.bpstat_prefix = bpstat_prefix
+
         self.signal_connection = SongWorkerConnection()
 
-    #@QtCore.Slot()
+        self.root_name = datetime.now().strftime("%Y-%m-%d %H-%M-%S (new)")
+        self.bpstat_path = os.path.join(self.data_directory, f"{self.root_name}.bpstat")
+
+    # @QtCore.Slot()
     def run(self):
-        lib, processing_ids, tracking_ids, mp3_target_directory, data_directory, bpstat_prefix = self.args
-
-        bpstat_name = datetime.now().strftime("%Y-%m-%d %H-%M-%S (new).bpstat")
-        bpstat_path = os.path.join(data_directory, bpstat_name)
-
-        os.makedirs(data_directory, exist_ok=True)
-        os.makedirs(mp3_target_directory, exist_ok=True)
+        os.makedirs(self.data_directory, exist_ok=True)
+        os.makedirs(self.mp3_target_directory, exist_ok=True)
         # bpstat generation and processing can happen at the same time
         song_arr = []
 
-        max_to_track = len(tracking_ids)
+        max_to_track = len(self.tracking_ids)
 
         # iterate only over ids to process, which is the longest task
-        for index, track_id in enumerate(tracking_ids):
-            song = lib.songs[track_id]
+        for index, track_id in enumerate(self.tracking_ids):
+            song = self.lib.songs[track_id]
 
             logging.info(f"Added {song.name} ({song.persistent_id}) to database for tracking ({index + 1}/{max_to_track})")
-            
-            bpsynctools.add_to_bpstat(song, bpstat_prefix, bpstat_path)
+
+            bpsynctools.add_to_bpstat(song, self.bpstat_prefix, self.bpstat_path)
             song_arr.append(song)
 
-        for index, track_id in enumerate(processing_ids):
-            song = lib.songs[track_id]
+        for index, track_id in enumerate(self.processing_ids):
+            song = self.lib.songs[track_id]
 
             logging.info(f"Processing {song.name} ({song.persistent_id})")
             self.signal_connection.songStartedProcessing.emit(index + 1, f"{song.artist} - {song.name}")
-            
+
             bpsynctools.copy_and_process_song(song)
-        
-        self.signal_connection.songStartedProcessing.emit(len(processing_ids), f"Processing complete - you can close this window.")
-            
-        # Create database with new songs
-        models.initialize_engine(data_directory)
-        models.create_db()
+
+        self.signal_connection.songStartedProcessing.emit(len(self.processing_ids), f"Processing complete - you can close this window.")
+
+        # Create/write database with new songs
+        models.initialize_engine(self.data_directory)
+        # Only create db if it hasn't been made yet
+        if(not os.path.isfile(os.path.join(self.data_directory, "songs.db"))):
+            models.create_db()
         models.add_libpy_songs(song_arr)
+
+class StandardWorker(SongWorker):
+    """
+    Worker thread for standard sync
+
+    Expects the following, all as positional args (from SongWorker):
+     - a libpytunes Library object
+     - a list of track IDs to process
+     - a list of track IDs to add to the local database
+     - the target directory to write newly processed/copied songs
+     - the target directory to write app data (database, new XMLs, .bpstats, etc.)
+     - the filepath prefix to use in the .bpstat itself
+    Expects additional positional args:
+     - the target directory for backups
+     - an array of files to backup
+     - the data array used for the table
+    """
+    # yuck lol
+    def __init__(self, lib, processing_ids, tracking_ids, mp3_target_directory, data_directory, bpstat_prefix, backup_directory, backup_paths, songs_changed_data):
+        super().__init__(lib, processing_ids, tracking_ids, mp3_target_directory, data_directory, bpstat_prefix)
+        self.backup_directory = backup_directory
+        self.backup_paths = backup_paths
+        self.songs_changed_data = songs_changed_data
+
+    def run(self):
+        """
+        Does the standard-sync processes:
+
+        - Create backups of all input files
+        - Iterate over all items currently in the database, update deltas
+        - Update libpytunes Library, write out to data_directory/<filename>.xml
+        - Start writing existing songs' lines to .bpstat
+        - Call run() of SongWorker to fill remainder
+        """
+        # generate backups
+        for backup_filepath in self.backup_paths:
+            bpsynctools.create_backup(backup_filepath, self.backup_directory)
+
+        # use the already-calculated values for everything
+        # ["Track ID", "Title", "Artist", "Album", "Base plays", "XML plays", "BP plays", "Delta", "New playcount", "Persistent ID"]
+        with models.Session() as session:
+            for row in self.songs_changed_data:            
+                track_id = row[0]
+                xml_plays = row[5]
+                bp_plays = row[6]
+                persistent_id = row[9]
+
+                # update database
+                db_song = session.query(models.StoredSong).filter(models.StoredSong.persistent_id==persistent_id).scalar()
+                delta = db_song.get_delta(xml_plays, bp_plays)
+                db_song.last_playcount += delta
+
+                # update library entry
+                self.lib.songs[track_id].play_count += delta
+
+                # write out to bpstat
+                bpsynctools.add_to_bpstat(self.lib.songs[track_id], self.bpstat_prefix, self.bpstat_path)
+
+            # commit changes
+            session.commit()
+
+        # Write out updated library to xml
+        xml_path = os.path.join(self.data_directory, f"{self.root_name}.xml")
+        #self.lib.writeToXML(xml_path, reformat=True)
+
+        super().run()
 
 
 class ProgressWindow(logging.Handler, QtWidgets.QWidget, Ui_ProcessingProgress):
@@ -555,8 +627,8 @@ class ProgressWindow(logging.Handler, QtWidgets.QWidget, Ui_ProcessingProgress):
         # Setup three parent classes + UI
         super().__init__()
         QtWidgets.QWidget.__init__(self)
-        
-        self.setWindowModality(QtCore.Qt.ApplicationModal) 
+
+        self.setWindowModality(QtCore.Qt.ApplicationModal)
         self.setupUi(self)
 
         # Setup slot for log_box
@@ -586,7 +658,7 @@ class ProgressWindow(logging.Handler, QtWidgets.QWidget, Ui_ProcessingProgress):
         self.progress_label.setText(f"({new_progress}/{self.maximum})")
         self.song_label.setText(new_string)
         self.progress_bar.setValue(new_progress)
-    
+
     def emit(self, record):
         """For logging support"""
         # https://stackoverflow.com/questions/28655198/best-way-to-display-logs-in-pyqt
@@ -604,8 +676,8 @@ if __name__ == '__main__':
     # Table test
     # https://stackoverflow.com/a/60528393 for correct implementation
     # w = TestTable()
-    
-    
+
+
     # Threading test
     thread_manager = QtCore.QThreadPool()
     w = ProgressWindow(1000)
@@ -616,6 +688,6 @@ if __name__ == '__main__':
     worker = TestWorker()
     worker.signal_connection.songStartedProcessing.connect(lambda progress_val, song_string: w.updateFields(progress_val, song_string))
     thread_manager.start(worker)
-    
+
     w.show()
     sys.exit(app.exec())

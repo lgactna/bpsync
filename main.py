@@ -305,16 +305,25 @@ class StandardSyncWindow(QtWidgets.QWidget, Ui_StandardSyncWindow):
         # TODO: Calculate top-right statistics
 
     def start_processing(self):
+        # Get all backup paths, store into array
+        xml_path = self.xml_path_lineedit.text()
+        bpstat_path = self.bpstat_path_lineedit.text()
+        database_path = self.database_path_lineedit.text()
+        backup_paths = [xml_path, bpstat_path, database_path]
+
         # Check if all necessary fields are (probably) filled out
         mp3_target_directory = self.mp3_path_lineedit.text()
         data_directory = self.data_path_lineedit.text()
-        bpstat_prefix = self.bpstat_path_lineedit.text()
+        backup_directory = self.backup_path_lineedit.text()
 
-        if not(mp3_target_directory and data_directory and bpstat_prefix and self.lib):
+        if not(mp3_target_directory and data_directory and backup_directory and self.lib):
             show_error_window("Missing required fields!", 
                               "Please make sure you've loaded an XML and set everything under Options.", 
                               "Required fields missing")
             return
+
+        # Calculate bpstat prefix
+        bpstat_prefix = self.bpsongs[0].get_bpstat_prefix()
         
         # Get track IDs of selected items for processing/tracking by iterating over table widget's model data
         new_data = self.new_songs_table.table_model.array_data
@@ -332,7 +341,9 @@ class StandardSyncWindow(QtWidgets.QWidget, Ui_StandardSyncWindow):
 
         # Start processing thread
         # BUG: This does not kill the thread even if the windows are closed
-        song_worker = bpsyncwidgets.SongWorker(self.lib, selected_ids_processing, selected_ids_tracking, mp3_target_directory, data_directory, bpstat_prefix)
+        song_worker = bpsyncwidgets.StandardWorker(self.lib, selected_ids_processing, selected_ids_tracking, 
+                                                    mp3_target_directory, data_directory, bpstat_prefix, backup_directory, backup_paths,
+                                                    self.songs_changed_table.table_model.array_data)
         song_worker.signal_connection.songStartedProcessing.connect(lambda progress_val, song_string: progress_window.updateFields(progress_val, song_string))
         self.thread_manager.start(song_worker)
        

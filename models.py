@@ -41,7 +41,7 @@ class StoredSong(Base):
         delta = xml_diff + bpstat_diff
 
         if delta < 0:
-            logger.error(f"Playcount for {persistent_id=} has gone down? {self.last_playcount=} {xml_pc=} {bpstat_pc=}")
+            logger.error(f"Playcount for {self.persistent_id=} has gone down? {self.last_playcount=} {xml_pc=} {bpstat_pc=}")
 
         return delta
 
@@ -58,12 +58,16 @@ def initialize_engine(filepath):
     Also initializes a sessionmaker."""
     global engine, Session
 
+    # if we were given a file instead of a directory, then use that full filepath
+    # but if we were just given a directory, then create an engine with songs.db
     filename = Path(filepath).stem
     if filename:
-        engine = create_engine(f"sqlite+pysqlite:///{filepath}", echo=True, future=True)
+        #engine = create_engine(f"sqlite+pysqlite:///{filepath}", echo=True, future=True)
+        engine = create_engine(f"sqlite+pysqlite:///{filepath}", future=True)
     else:
         output_path = os.path.join(filepath, "songs.db")
-        engine = create_engine(f"sqlite+pysqlite:///{output_path}", echo=True, future=True)
+        #engine = create_engine(f"sqlite+pysqlite:///{output_path}", echo=True, future=True)
+        engine = create_engine(f"sqlite+pysqlite:///{output_path}", future=True)
     Session = sessionmaker(engine)
 
 def create_db():

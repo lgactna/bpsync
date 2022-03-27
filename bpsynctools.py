@@ -133,6 +133,8 @@ def create_backup(file_path, output_folder='backups'):
 
     Backups are stored in /backups relative to the run location by default. 
     """
+    os.makedirs(output_folder, exist_ok=True)
+
     _, file_extension = os.path.splitext(file_path)
     file_name = datetime.now().strftime("backup-%Y-%m-%d %H-%M-%S"+file_extension)
     

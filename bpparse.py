@@ -76,6 +76,12 @@ class BPSong:
         except ValueError:
             return None
 
+    def get_bpstat_prefix(self):
+        """
+        Strip out the filepath prefix/root out of the filepath.
+        """
+        return str(Path(self.filepath).parent)
+
 def get_songs(filepath):
     """
     Parse a .bpstat file, returning an array of BPSong objects.
