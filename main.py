@@ -260,7 +260,7 @@ class StandardSyncWindow(QtWidgets.QWidget, Ui_StandardSyncWindow):
         # TODO: Custom exception class, move out of this UI function
         ## try generating libpytuneslibrary from specified XML
         try:
-            library = Library(xml_path)
+            self.lib = Library(xml_path)
         except xml.parsers.expat.ExpatError as e:
             show_error_window("Invalid XML file!", 
                                 f"Couldn't parse XML file (if it is one) - {e}", 
@@ -273,8 +273,8 @@ class StandardSyncWindow(QtWidgets.QWidget, Ui_StandardSyncWindow):
             return
 
         ## try generating bpstat library
-        bpsongs = bpparse.get_songs(bpstat_path)
-        if not bpsongs:
+        self.bpsongs = bpparse.get_songs(bpstat_path)
+        if not self.bpsongs:
             show_error_window(".bpstat malformed!", 
                                 "The program wasn't able to find any valid songs in this file.",
                                 "Invalid .bpstat file")
@@ -289,15 +289,15 @@ class StandardSyncWindow(QtWidgets.QWidget, Ui_StandardSyncWindow):
                                "Database error")
             return
         with models.Session() as session:
-            db_songs = session.query(models.StoredSong).all()
-        if not db_songs:
+            self.db_songs = session.query(models.StoredSong).all()
+        if not self.db_songs:
             show_error_window("No songs in database!",
                        "A database query yielded no results.",
                        "Database error")
             return
 
         # call helper function
-        existing_data, new_data = bpsynctools.standard_sync_arrays_from_data(library, bpsongs, db_songs)
+        existing_data, new_data = bpsynctools.standard_sync_arrays_from_data(self.lib, self.bpsongs, self.db_songs)
 
         self.songs_changed_table.set_data(existing_data)
         self.new_songs_table.set_data(new_data)
@@ -316,12 +316,11 @@ class StandardSyncWindow(QtWidgets.QWidget, Ui_StandardSyncWindow):
                               "Required fields missing")
             return
         
-        # Oh boy
-        # Get track IDs of selected items by iterating over table widget's model data
-        data = self.table_widget.table_model.array_data
+        # Get track IDs of selected items for processing/tracking by iterating over table widget's model data
+        new_data = self.new_songs_table.table_model.array_data
         selected_ids_processing = []
         selected_ids_tracking = []
-        for row in data:
+        for row in new_data:
             if row[1]:  # Check for mp3 processing
                 selected_ids_processing.append(row[0])
             if row[2]:  # Check for db tracking
@@ -329,14 +328,14 @@ class StandardSyncWindow(QtWidgets.QWidget, Ui_StandardSyncWindow):
 
         # Create progress bar for element processing (the longest operation)
         progress_window = bpsyncwidgets.ProgressWindow(len(selected_ids_processing))
+        progress_window.show()
 
         # Start processing thread
         # BUG: This does not kill the thread even if the windows are closed
         song_worker = bpsyncwidgets.SongWorker(self.lib, selected_ids_processing, selected_ids_tracking, mp3_target_directory, data_directory, bpstat_prefix)
         song_worker.signal_connection.songStartedProcessing.connect(lambda progress_val, song_string: progress_window.updateFields(progress_val, song_string))
         self.thread_manager.start(song_worker)
-
-        progress_window.show()
+       
 
 if __name__ == "__main__":
     app = QtWidgets.QApplication(sys.argv)
