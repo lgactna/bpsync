@@ -592,13 +592,14 @@ class StandardWorker(SongWorker):
                 bp_plays = row[6]
                 persistent_id = row[9]
 
-                # update database
+                # get database entry
                 db_song = session.query(models.StoredSong).filter(models.StoredSong.persistent_id==persistent_id).scalar()
                 delta = db_song.get_delta(xml_plays, bp_plays)
+                
+                # update library entry and database
+                # note that the library entry already includes the extra xml plays, so we just do last_playcount+delta
+                self.lib.songs[track_id].play_count = db_song.last_playcount + delta
                 db_song.last_playcount += delta
-
-                # update library entry
-                self.lib.songs[track_id].play_count += delta
 
                 # write out to bpstat
                 bpsynctools.add_to_bpstat(self.lib.songs[track_id], self.bpstat_prefix, self.bpstat_path)
