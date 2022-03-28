@@ -608,7 +608,7 @@ class StandardWorker(SongWorker):
 
         # Write out updated library to xml
         xml_path = os.path.join(self.data_directory, f"{self.root_name}.xml")
-        #self.lib.writeToXML(xml_path, reformat=True)
+        self.lib.writeToXML(xml_path)
 
         super().run()
 
