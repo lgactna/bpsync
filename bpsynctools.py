@@ -120,6 +120,21 @@ def add_to_bpstat(song, bpstat_prefix, bpstat_path):
     with open(bpstat_path, "ab") as fp:
         fp.write(output.encode('utf-8'))
 
+def add_to_exportimport(song, exportimport_path):
+    """
+    Append a song to a line in the specified text file.
+
+    For use with https://samsoft.org.uk/iTunes/scripts.asp#ExportImport.
+    
+    :param song: The StoredSong object to add.
+    :param exportimport_path: The full location of the txt file to use.
+    """
+
+    # check if file exists; if not, initialize it with BOM?
+    with open(exportimport_path, "a", encoding="utf-16") as fp:
+        fp.write(f"<ID>{song.persistent_id[0:8]}-{song.persistent_id[9:16]}\n")
+        fp.write(f"<Plays>{song.last_playcount}\n\n")
+
 # endregion
 
 def create_backup(file_path, output_folder='backups'):

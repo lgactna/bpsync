@@ -569,6 +569,8 @@ class StandardWorker(SongWorker):
         self.backup_paths = backup_paths
         self.songs_changed_data = songs_changed_data
 
+        self.exportimport_path = os.path.join(self.data_directory, f"{self.root_name} (exportimport).txt")
+
     def run(self):
         """
         Does the standard-sync processes:
@@ -603,6 +605,7 @@ class StandardWorker(SongWorker):
 
                 # write out to bpstat
                 bpsynctools.add_to_bpstat(self.lib.songs[track_id], self.bpstat_prefix, self.bpstat_path)
+                bpsynctools.add_to_exportimport(db_song, self.exportimport_path)
 
             # commit changes
             session.commit()
