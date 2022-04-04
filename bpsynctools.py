@@ -132,7 +132,7 @@ def add_to_exportimport(song, exportimport_path):
 
     # check if file exists; if not, initialize it with BOM?
     with open(exportimport_path, "a", encoding="utf-16") as fp:
-        fp.write(f"<ID>{song.persistent_id[0:8]}-{song.persistent_id[9:16]}\n")
+        fp.write(f"<ID>{song.persistent_id[0:8]}-{song.persistent_id[8:16]}\n")
         fp.write(f"<Plays>{song.last_playcount}\n\n")
 
 # endregion
