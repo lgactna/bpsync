@@ -140,3 +140,4 @@ data/
 *.bpstat
 *.xml
 *.db
+out.txt
