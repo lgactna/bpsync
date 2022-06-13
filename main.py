@@ -18,6 +18,7 @@ SONGS_FOLDER = 'tmp'
 
 TARGET_FOLDER = '/storage/sdcard1/imported-music/'
 
+from main_menu import Ui_MainMenuWindow
 from first_time import Ui_FirstTimeWindow
 from std_sync import Ui_StandardSyncWindow
 from progress import Ui_ProcessingProgress
@@ -30,6 +31,31 @@ def show_error_window(text, informative_text, title):
     msg.setInformativeText(informative_text)
     msg.setWindowTitle(title)
     msg.exec()
+
+class MainMenuWindow(QtWidgets.QWidget, Ui_MainMenuWindow):
+    def __init__(self):
+        super().__init__()
+
+        self.setupUi(self)
+
+        self.launch_first_button.clicked.connect(self.open_first_sync)
+        self.launch_std_button.clicked.connect(self.open_std_sync)
+        self.launch_bpstat_button.clicked.connect(self.open_bpstat_converter)
+        self.launch_m3u_button.clicked.connect(self.open_m3u_generator)
+
+    def open_first_sync(self):
+        window = FirstTimeWindow()
+        window.show()
+
+    def open_std_sync(self):
+        window = StandardSyncWindow()
+        window.show()
+
+    def open_bpstat_converter(self):
+        pass
+
+    def open_m3u_generator(self):
+        pass
 
 class FirstTimeWindow(QtWidgets.QWidget, Ui_FirstTimeWindow):
     # TODO: right-click context menu with more information + volume edit
@@ -352,7 +378,7 @@ if __name__ == "__main__":
     app = QtWidgets.QApplication(sys.argv)
 
     #window = FirstTimeWindow()
-    window = StandardSyncWindow()
+    window = MainMenuWindow()
     window.show()
 
     # Start the event loop.
