@@ -7,7 +7,7 @@
     <x>0</x>
     <y>0</y>
     <width>840</width>
-    <height>670</height>
+    <height>754</height>
    </rect>
   </property>
   <property name="windowTitle">
@@ -17,7 +17,7 @@
    <item>
     <widget class="QLabel" name="label_2">
      <property name="text">
-      <string>This tool compares any changes in an existing song database and writes an updated XML and .bpstat. If applicable, it also prompts you to copy and prepare any new songs that were not tracked in the XML previously.</string>
+      <string>This tool compares any changes in an existing song database and writes an updated XML and .bpstat. If applicable, it also prompts you to copy and prepare any new songs that were not tracked in the XML previously or require a reprocess (e.g. a start/stop time change).</string>
      </property>
      <property name="wordWrap">
       <bool>true</bool>
@@ -136,7 +136,7 @@
    <item>
     <widget class="QLabel" name="label_11">
      <property name="text">
-      <string>New songs</string>
+      <string>New/modified songs</string>
      </property>
     </widget>
    </item>
@@ -170,6 +170,13 @@
       <string>Options</string>
      </property>
      <layout class="QVBoxLayout" name="verticalLayout_2">
+      <item>
+       <widget class="QPushButton" name="pushButton">
+        <property name="text">
+         <string>Show previously ignored songs</string>
+        </property>
+       </widget>
+      </item>
       <item>
        <layout class="QHBoxLayout" name="horizontalLayout_3">
         <item>
