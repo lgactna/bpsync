@@ -44,13 +44,25 @@ class CheckBoxDelegate(QtWidgets.QItemDelegate):
         Paint a checkbox without the label.
         """
         self.drawBackground(painter, option, index)  # Draws the background for row-based selection
-        self.drawCheck(painter, option, option.rect,
-                       QtCore.Qt.Unchecked if int(index.data()) == 0 else QtCore.Qt.Checked)
+
+        if int(index.data()) == 0:
+           self.drawCheck(painter, option, option.rect, QtCore.Qt.Unchecked)
+        elif int(index.data()) == 1: 
+           self.drawCheck(painter, option, option.rect, QtCore.Qt.Checked)
+        elif int(index.data()) == -1: 
+            # If the state of the checkbox is anything other than 0 or 1. 
+            # Supports per-item undrawn checkboxes.
+            pass
+        else:
+            # Checkbox data should be [-1, 1], never anything else - this indicates
+            # some data mismatching
+            logging.warning("Invalid index.data() in CheckboxDelegate.paint()??")
 
     def editorEvent(self, event, model, option, index):
         """
-        Change the data in the model and the state of the checkbox
-        if the user presses the left mousebutton and this cell is editable. Otherwise do nothing.
+        Upon a left-click release where the delegate has the ItemIsEditable
+        flag enabled, call setModelData(). This means that any rows in a checkbox
+        column where ItemIsEditable is not set will not be updated at all.
         """
         if not int(index.flags() & QtCore.Qt.ItemIsEditable) > 0:
             return False
@@ -62,9 +74,10 @@ class CheckBoxDelegate(QtWidgets.QItemDelegate):
 
     def setModelData(self, editor, model, index):
         """
-        Invert checkbox on click.
+        Set the data. In this case, it just inverts the checkbox on click.
 
-        Affects proxy:
+        The index given refers to the proxy, and must be mapped to the source index
+        to correctly update the underlying data model:
         https://forum.qt.io/topic/121874/how-to-access-source-model-methods-from-proxy-model,
         https://doc.qt.io/qt-5/qabstractproxymodel.html#mapToSource
         """
@@ -102,10 +115,6 @@ class CheckBoxHeader(QtWidgets.QHeaderView):
         # https://stackoverflow.com/questions/18777554/why-wont-my-custom-qheaderview-allow-sorting
         self.setSectionsClickable(True)
 
-        # TODO: setup function to define checkbox column headers
-        # TODO: function in model to toggle all VISIBLE rows
-        # TODO: function from proxy to return visible rows that can 
-
     def paintSection(self, painter, rect, logicalIndex):
         # Draw the original section headers
         painter.save()
@@ -130,7 +139,7 @@ class CheckBoxHeader(QtWidgets.QHeaderView):
             self.style().drawPrimitive(QStyle.PE_IndicatorCheckBox, option, painter)
 
     def mousePressEvent(self, event):
-        # Below is not necessary due to super() call, kept for reference
+        # Below comments are not relevant due to super() call, kept for reference
         # Likely need to implement manual sorting, as well as manual tracking of checkbox positions
         # i.e. use sortByColumn: https://doc.qt.io/qt-5/qtableview.html#sortByColumn
         # https://stackoverflow.com/questions/26775577/hidden-sort-indicator-on-column-in-qtreeview
@@ -228,7 +237,12 @@ class SongTableModel(QAbstractTableModel):
         """
         if index.column() in self.checkbox_columns:
             # return QAbstractTableModel.flags(index) | Qt.ItemIsUserCheckable
-            return Qt.ItemIsEnabled | Qt.ItemIsSelectable | Qt.ItemIsEditable
+            if index.data() == -1:
+                # This is how individual rows can bet set to not have a checkbox
+                # All models must agree that "-1" is 
+                return Qt.ItemIsEnabled | Qt.ItemIsSelectable
+            else:
+                return Qt.ItemIsEnabled | Qt.ItemIsSelectable | Qt.ItemIsEditable
         else:
             # return QAbstractTableModel.flags(index)
             return Qt.ItemIsEnabled | Qt.ItemIsSelectable
@@ -388,7 +402,7 @@ class TestTable(QWidget):
         data = [
             [23, 1, 1, "image material", "tatsh", "zephyr", 52, "Yes (0:00.000 - 5:25.012)", "D:/Music/a.mp3"],
             [37, 1, 1, "the world's end", "horie yui", "zephyr", 24, "Yes (0:00.000 - 2:14.120)", "D:/Music/b.mp3"],
-            [316, 1, 1, "oceanus", "cosmo@bosoup", "deemo", 13, "No", "D:/Music/c.mp3"],
+            [316, -1, -1, "oceanus", "cosmo@bosoup", "deemo", 13, "No", "D:/Music/c.mp3"],
             [521, 0, 0, "wow", "eien-p", "r", 0, "No", "D:/Music/d.mp3"]
         ]
         box_columns = [1, 2]
@@ -512,15 +526,19 @@ class SongWorker(QtCore.QRunnable):
         self.bpstat_path = os.path.join(self.data_directory, f"{self.root_name}.bpstat")
 
     # @QtCore.Slot()
+    # TODO: Add signal/slot to stop processing, e.g. when processing window is closed
     def run(self):
         os.makedirs(self.data_directory, exist_ok=True)
         os.makedirs(self.mp3_target_directory, exist_ok=True)
-        # bpstat generation and processing can happen at the same time
-        song_arr = []
+        
+        song_arr = [] #array holding libpytunes songs to add to the database for tracking
 
         max_to_track = len(self.tracking_ids)
 
+        # bpstat generation and processing can happen at the same time
+
         # iterate only over ids to process, which is the longest task
+        # TODO: is this where we should check if an ID already exists in the tracker and therefore doesn't need to be added?
         for index, track_id in enumerate(self.tracking_ids):
             song = self.lib.songs[track_id]
 
@@ -550,19 +568,21 @@ class StandardWorker(SongWorker):
     """
     Worker thread for standard sync
 
-    Expects the following, all as positional args (from SongWorker):
+    Expects the following, all as positional args:
+    For SongWorker:
      - a libpytunes Library object
      - a list of track IDs to process
      - a list of track IDs to add to the local database
      - the target directory to write newly processed/copied songs
      - the target directory to write app data (database, new XMLs, .bpstats, etc.)
      - the filepath prefix to use in the .bpstat itself
-    Expects additional positional args:
+    Specifically for StandardWorker:
      - the target directory for backups
      - an array of files to backup
      - the data array used for the table
     """
     # yuck lol
+    # is there a better way to arrange these parameters? does a cohesive object make sense here?
     def __init__(self, lib, processing_ids, tracking_ids, mp3_target_directory, data_directory, bpstat_prefix, backup_directory, backup_paths, songs_changed_data):
         super().__init__(lib, processing_ids, tracking_ids, mp3_target_directory, data_directory, bpstat_prefix)
         self.backup_directory = backup_directory
@@ -679,19 +699,19 @@ if __name__ == '__main__':
 
     # Table test
     # https://stackoverflow.com/a/60528393 for correct implementation
-    # w = TestTable()
+    w = TestTable()
 
 
     # Threading test
-    thread_manager = QtCore.QThreadPool()
-    w = ProgressWindow(1000)
+    # thread_manager = QtCore.QThreadPool()
+    # w = ProgressWindow(1000)
 
-    #logging.getLogger().addHandler(w)
-    #logging.getLogger().setLevel(logging.DEBUG)
+    # logging.getLogger().addHandler(w)
+    # logging.getLogger().setLevel(logging.DEBUG)
 
-    worker = TestWorker()
-    worker.signal_connection.songStartedProcessing.connect(lambda progress_val, song_string: w.updateFields(progress_val, song_string))
-    thread_manager.start(worker)
+    # worker = TestWorker()
+    # worker.signal_connection.songStartedProcessing.connect(lambda progress_val, song_string: w.updateFields(progress_val, song_string))
+    # thread_manager.start(worker)
 
     w.show()
     sys.exit(app.exec())
