@@ -268,7 +268,7 @@ class SongTableModel(QAbstractTableModel):
         return None
 
     def setData(self, index, value, role=Qt.EditRole):
-        if role == Qt.EditRole:
+        if role == Qt.EditRole and int(index.flags() & QtCore.Qt.ItemIsEditable) > 0:
             self.array_data[index.row()][index.column()] = value
             self.dataChanged.emit(index, index, ())
             return True
@@ -385,6 +385,9 @@ class SongView(QTableView):
         for row_index in range(visible_rows):
             proxy_index = self.proxy.index(row_index, column_index)
             source_index = self.proxy.mapToSource(proxy_index)
+
+            # Note that setData checks for the editable flag so this won't affect 
+            # the -1 "no checkbox" rows
             self.table_model.setData(source_index, new_check_state)
 
 # endregion
@@ -400,7 +403,7 @@ class TestTable(QWidget):
         # Testing parameters
         headers = ["Track ID", "Copy?", "Track?", "Title", "Artist", "Album", "Plays", "Trimmed?", "Filepath"]
         data = [
-            [23, 1, 1, "image material", "tatsh", "zephyr", 52, "Yes (0:00.000 - 5:25.012)", "D:/Music/a.mp3"],
+            [23, -1, -1, "image material", "tatsh", "zephyr", 52, "Yes (0:00.000 - 5:25.012)", "D:/Music/a.mp3"],
             [37, 1, 1, "the world's end", "horie yui", "zephyr", 24, "Yes (0:00.000 - 2:14.120)", "D:/Music/b.mp3"],
             [316, -1, -1, "oceanus", "cosmo@bosoup", "deemo", 13, "No", "D:/Music/c.mp3"],
             [521, 0, 0, "wow", "eien-p", "r", 0, "No", "D:/Music/d.mp3"]
