@@ -183,9 +183,12 @@ def first_sync_array_from_libpysongs(songs):
 
     return data
 
-def standard_sync_arrays_from_data(library, bpstat_songs, db_songs):
+def standard_sync_arrays_from_data(library, bpstat_songs):
     """
     Creates the two 2D arrays used to create the standard sync tables.
+
+    :param library: A dictionary of track IDs to libpytunes Song objects.
+    :param bpstat_songs: A list of BPSong objects.
 
     Occurs in about four steps, two of which are done in the UI function:
     - Start by trying to load/open all three files. Raise RuntimeError (or another exception) if fail.
@@ -196,10 +199,16 @@ def standard_sync_arrays_from_data(library, bpstat_songs, db_songs):
         - If there exists an entry by persistent ID in both the bpstat and database:
             - Calculate (but do not update) the delta and create a row for the first table.
         - If not:
-            - Add that specific Song entry to a separate dictionary
-    - Call the first-sync-array function above to create the second table's rows.
+            - Add that specific Song entry to a separate dictionary, which is (eventually) passed into
+              first_sync_array_from_libpysongs()
+        Additionally, if the songs requires reprocessing through ffmpeg (due to an ID3 tag
+        change or other qualifying change, like a change in volume or song length):
+            - Add a checkbox in the "Reprocess" column.
+    - Call first_sync_array_from_libpysongs() to create the second table's rows.
     """
-    session = models.Session() # to make db_songs, the engine must already have been initialized
+    # to make db_songs, the engine must already have been initialized
+    # therefore it's safe to assume a session can be created
+    session = models.Session() 
 
     # create dict for bpstat songs, by persistent id
     bpsongs = {}
@@ -216,19 +225,40 @@ def standard_sync_arrays_from_data(library, bpstat_songs, db_songs):
             bpstat_song = bpsongs[song.persistent_id]
 
             if not stored_song:
-                raise KeyError() # same behavior as bpstat_song throwing a KeyError
+                raise KeyError()  # same behavior as bpstat_song throwing a KeyError upon no result found
         except sqlalchemy.orm.exc.MultipleResultsFound:
             logging.error("Database has multiple entries of the same ID?")
             continue
         except KeyError:
-            new_songs[track_id] = song
+            # The song doesn't exist in the StoredSong or wasn't in the bpstat.
+            # Check if the song was previously ignored (i.e.) a corresponding IgnoredSong entry exists.
+            # If so, then do not attempt to add it to the new song table.
+            ignored_song = session.query(models.IgnoredSong).filter(
+                models.IgnoredSong.persistent_id == song.persistent_id).scalar()
+
+            if not ignored_song:
+                new_songs[track_id] = song
+
+            # In all cases, since the song is not being tracked, move on to the next song.
             continue
 
         # if it gets here, then the song is being tracked
-        ["Track ID", "Title", "Artist", "Album", "Base plays", "XML plays", "BP plays", "Delta", "New playcount", "Persistent ID"]
+        # note that songs are added to this table/2D array regardless of its playcount has changed or not
+        # ["Track ID", "Reprocess", "Title", "Artist", "Album", "Base plays", "XML plays", "BP plays", "Delta", "New playcount", "Persistent ID"]
         play_count = song.play_count if song.play_count else 0
         delta = stored_song.get_delta(play_count, bpstat_song.total_plays)
-        existing_songs_rows.append([track_id, song.name, song.artist, song.album, stored_song.last_playcount, play_count,
+        
+        # Default to not drawing checkbox by default. -1 indicates "no checkbox"
+        # to the underlying widgets. 
+        reprocess = -1
+        if stored_song.needs_reprocessing(song):
+            # This StoredSong method takes in a libpytunes Song object and compares the
+            # relevant fields to see if reprocessing is needed. If it returns true,
+            # which occurs if ANY qualifying field has changed, then set the checkbox
+            # to equal 1.
+            reprocess = 1
+        
+        existing_songs_rows.append([track_id, reprocess, song.name, song.artist, song.album, stored_song.last_playcount, play_count,
                                    bpstat_song.total_plays, delta, stored_song.last_playcount+delta, song.persistent_id])
 
     # create data for first-time from dict

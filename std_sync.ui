@@ -171,7 +171,7 @@
      </property>
      <layout class="QVBoxLayout" name="verticalLayout_2">
       <item>
-       <widget class="QPushButton" name="pushButton">
+       <widget class="QPushButton" name="show_ignored_songs_button">
         <property name="text">
          <string>Show previously ignored songs</string>
         </property>

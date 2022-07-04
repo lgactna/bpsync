@@ -21,6 +21,7 @@ TARGET_FOLDER = '/storage/sdcard1/imported-music/'
 from main_menu import Ui_MainMenuWindow
 from first_time import Ui_FirstTimeWindow
 from std_sync import Ui_StandardSyncWindow
+from ignored_songs import Ui_IgnoredSongsDialog
 from progress import Ui_ProcessingProgress
 from PySide6 import QtWidgets, QtCore, QtGui
 
@@ -59,11 +60,11 @@ class MainMenuWindow(QtWidgets.QWidget, Ui_MainMenuWindow):
 
 class FirstTimeWindow(QtWidgets.QWidget, Ui_FirstTimeWindow):
     # TODO: right-click context menu with more information + volume edit
-    # TODO: extended info screen
+    # TODO: extended info screen detailing all fields, plus edit functionality
     def __init__(self):
         super().__init__()
-        
-        self.setWindowModality(QtCore.Qt.ApplicationModal) 
+
+        self.setWindowModality(QtCore.Qt.ApplicationModal)
         self.setupUi(self)
 
         self.program_path = QtCore.QDir.currentPath()
@@ -75,24 +76,24 @@ class FirstTimeWindow(QtWidgets.QWidget, Ui_FirstTimeWindow):
         self.data_path_lineedit.setText('data')
 
         # Signals and slots
-        ## Buttons
+        # Buttons
         self.xml_browse_button.clicked.connect(self.xml_open_prompt)
         self.xml_load_button.clicked.connect(self.update_with_xml)
         self.mp3_browse_button.clicked.connect(self.mp3_save_prompt)
         self.data_browse_button.clicked.connect(self.data_save_prompt)
         self.start_button.clicked.connect(self.start_processing)
-        ## Table functionality
+        # Table functionality
         self.table_filter_lineedit.textChanged.connect(lambda text: self.table_widget.proxy.set_filter_text(text))
 
         # Table
-        ## In order: column headers, starting data, checkbox columns, columns to filter on with lineedit
+        # In order: column headers, starting data, checkbox columns, columns to filter on with lineedit
         headers = ["Track ID", "Copy?", "Track?", "Title", "Artist", "Album", "Plays", "Trimmed?", "Volume%", "Filepath"]
         data = [[1, 1, 1, "YU.ME.NO !", "ユメガタリ(ミツキヨ , shnva)", " ユメの喫茶店", 24, "No", "100%", "D:/Music/a.mp3"]]
         box_columns = [1, 2]
         filter_on = [3, 4, 5]
 
         column_sizes = [50, 80, 80, 200, 120, 120, 50, 100, 50, 200]
-        
+
         ## Set up initial table contents and formatting
         self.table_widget.setup(headers, data, box_columns, filter_on)
         self.table_widget.set_column_widths(column_sizes)
@@ -104,13 +105,13 @@ class FirstTimeWindow(QtWidgets.QWidget, Ui_FirstTimeWindow):
             self.xml_path_lineedit.setText(file_name)
 
     def mp3_save_prompt(self):
-        directory = QtWidgets.QFileDialog.getExistingDirectory(self, 
+        directory = QtWidgets.QFileDialog.getExistingDirectory(self,
                 "Select processed mp3 directory", self.program_path)
         if directory:
             self.mp3_path_lineedit.setText(directory)
 
     def data_save_prompt(self):
-        directory = QtWidgets.QFileDialog.getExistingDirectory(self, 
+        directory = QtWidgets.QFileDialog.getExistingDirectory(self,
                 "Select data directory", self.program_path)
         if directory:
             self.data_path_lineedit.setText(directory)
@@ -119,21 +120,21 @@ class FirstTimeWindow(QtWidgets.QWidget, Ui_FirstTimeWindow):
         # get contents of lineedit
         xml_path = self.xml_path_lineedit.text()
         if not xml_path:
-            show_error_window("Please enter an XML path!", 
-                              "You can do this by manually entering the path or selecting it by clicking Browse.", 
+            show_error_window("Please enter an XML path!",
+                              "You can do this by manually entering the path or selecting it by clicking Browse.",
                               "No XML path defined")
             return
         # generate library from it
         try:
             self.lib = Library(xml_path)
         except xml.parsers.expat.ExpatError as e:
-            show_error_window("Invalid XML file!", 
-                              f"Couldn't parse XML file (if it is one) - {e}", 
+            show_error_window("Invalid XML file!",
+                              f"Couldn't parse XML file (if it is one) - {e}",
                               "Invalid XML file")
             return
         except FileNotFoundError:
-            show_error_window("File not found!", 
-                              "The entered path doesn't appear to exist.", 
+            show_error_window("File not found!",
+                              "The entered path doesn't appear to exist.",
                               "Invalid XML filepath")
             return
         # update table from it
@@ -149,28 +150,34 @@ class FirstTimeWindow(QtWidgets.QWidget, Ui_FirstTimeWindow):
         bpstat_prefix = self.bpstat_path_lineedit.text()
 
         if not(mp3_target_directory and data_directory and bpstat_prefix and self.lib):
-            show_error_window("Missing required fields!", 
-                              "Please make sure you've loaded an XML and set everything under Options.", 
+            show_error_window("Missing required fields!",
+                              "Please make sure you've loaded an XML and set everything under Options.",
                               "Required fields missing")
             return
-        
-        # Oh boy
+
+        # Data processing
         # Get track IDs of selected items by iterating over table widget's model data
         data = self.table_widget.table_model.array_data
         selected_ids_processing = []
         selected_ids_tracking = []
+        ignored_ids_tracking = []
         for row in data:
             if row[1]:  # Check for mp3 processing
                 selected_ids_processing.append(row[0])
+
             if row[2]:  # Check for db tracking
                 selected_ids_tracking.append(row[0])
+            else:
+                # Add persistent ID to ignore list
+                song = self.lib.songs[row[0]]
+                ignored_ids_tracking.append(song.persistent_id)
 
         # Create progress bar for element processing (the longest operation)
         progress_window = bpsyncwidgets.ProgressWindow(len(selected_ids_processing))
 
         # Start processing thread
         # BUG: This does not kill the thread even if the windows are closed
-        song_worker = bpsyncwidgets.SongWorker(self.lib, selected_ids_processing, selected_ids_tracking, mp3_target_directory, data_directory, bpstat_prefix)
+        song_worker = bpsyncwidgets.SongWorker(self.lib, selected_ids_processing, selected_ids_tracking, ignored_ids_tracking, mp3_target_directory, data_directory, bpstat_prefix)
         song_worker.signal_connection.songStartedProcessing.connect(lambda progress_val, song_string: progress_window.updateFields(progress_val, song_string))
         self.thread_manager.start(song_worker)
 
@@ -181,13 +188,16 @@ class StandardSyncWindow(QtWidgets.QWidget, Ui_StandardSyncWindow):
     # TODO: extended info screen
     def __init__(self):
         super().__init__()
-        
-        self.setWindowModality(QtCore.Qt.ApplicationModal) 
+
+        self.setWindowModality(QtCore.Qt.ApplicationModal)
         self.setupUi(self)
 
         self.program_path = QtCore.QDir.currentPath()
         self.lib = None  # libpytunes Library object
+        self.db_songs = None  # Array of StoredSong objects from querying database
         self.thread_manager = QtCore.QThreadPool()
+
+        self.db_initialized = False  # Whether or not the database file has been loaded
 
         # Prepopulate fields
         self.mp3_path_lineedit.setText('tmp')
@@ -205,6 +215,8 @@ class StandardSyncWindow(QtWidgets.QWidget, Ui_StandardSyncWindow):
         self.data_browse_button.clicked.connect(self.data_save_prompt)
         self.backup_browse_button.clicked.connect(self.backup_save_prompt)
 
+        self.show_ignored_songs_button.clicked.connect(self.open_ignored_songs_dialog)
+
         self.start_button.clicked.connect(self.start_processing)
 
         ## Table functionality
@@ -213,12 +225,12 @@ class StandardSyncWindow(QtWidgets.QWidget, Ui_StandardSyncWindow):
 
         # Synced songs table
         ## In order: column headers, starting data, checkbox columns, columns to filter on with lineedit
-        headers_delta = ["Track ID", "Title", "Artist", "Album", "Base plays", "XML plays", "BP plays", "Delta", "New playcount", "Persistent ID"]
-        data_delta = [[2, "Call My Name Feat. Yukacco", "mameyudoufu", "「FÜGENE2」", 25, 38, 42, "+30", 55, "DEAE900B9933338C"]]
-        box_columns_delta = []
-        filter_on_delta = [1, 2, 3, 9]
+        headers_delta = ["Track ID", "Reprocess", "Title", "Artist", "Album", "Base plays", "XML plays", "BP plays", "Delta", "New playcount", "Persistent ID"]
+        data_delta = [[2, 1, "Call My Name Feat. Yukacco", "mameyudoufu", "「FÜGENE2」", 25, 38, 42, "+30", 55, "DEAE900B9933338C"]]
+        box_columns_delta = [1]
+        filter_on_delta = [1, 3, 4, 10]
 
-        column_sizes_delta = [50, 200, 120, 120, 80, 80, 80, 80, 100, 200]
+        column_sizes_delta = [50, 100, 200, 120, 120, 80, 80, 80, 80, 100, 200]
 
         self.songs_changed_table.setup(headers_delta, data_delta, box_columns_delta, filter_on_delta)
         self.songs_changed_table.set_column_widths(column_sizes_delta)
@@ -233,13 +245,33 @@ class StandardSyncWindow(QtWidgets.QWidget, Ui_StandardSyncWindow):
 
         self.new_songs_table.setup(headers, data, box_columns, filter_on)
         self.new_songs_table.set_column_widths(column_sizes)
-        
+    
+    def open_ignored_songs_dialog(self):
+        # whose responsibility is it to keep track of this?
+        if not self.db_initialized:
+            show_error_window("Database not available!", 
+                              "Have you loaded in a .db file yet?",
+                              "Database not available!")
+            return
+
+        with models.Session() as session:
+            ignored_songs = session.query(models.IgnoredSong).all()
+
+        if not ignored_songs:
+            show_error_window("No ignored songs found!",
+                              "There were no ignored songs in the database file. Ignored songs only appear if you explicitly choose not to track a song in your library.",
+                              "No ignored songs found!")
+            return
+
+        window = IgnoredSongsDialog(self, ignored_songs)
+        window.show()
+
     def xml_open_prompt(self):
         file_name, _ = QtWidgets.QFileDialog.getOpenFileName(self, "Open XML", self.program_path,
                 "XML (*.xml);;All Files (*)")
         if file_name:
             self.xml_path_lineedit.setText(file_name)
-    
+
     def bpstat_open_prompt(self):
         file_name, _ = QtWidgets.QFileDialog.getOpenFileName(self, "Open .bpstat", self.program_path,
                 "Blackplayer statistics file (*.bpstat);;All Files (*)")
@@ -253,19 +285,19 @@ class StandardSyncWindow(QtWidgets.QWidget, Ui_StandardSyncWindow):
             self.database_path_lineedit.setText(file_name)
 
     def mp3_save_prompt(self):
-        directory = QtWidgets.QFileDialog.getExistingDirectory(self, 
+        directory = QtWidgets.QFileDialog.getExistingDirectory(self,
                 "Select processed mp3 directory", self.program_path)
         if directory:
             self.mp3_path_lineedit.setText(directory)
 
     def data_save_prompt(self):
-        directory = QtWidgets.QFileDialog.getExistingDirectory(self, 
+        directory = QtWidgets.QFileDialog.getExistingDirectory(self,
                 "Select data directory", self.program_path)
         if directory:
             self.data_path_lineedit.setText(directory)
 
     def backup_save_prompt(self):
-        directory = QtWidgets.QFileDialog.getExistingDirectory(self, 
+        directory = QtWidgets.QFileDialog.getExistingDirectory(self,
                 "Select backup directory", self.program_path)
         if directory:
             self.backup_path_lineedit.setText(directory)
@@ -277,41 +309,42 @@ class StandardSyncWindow(QtWidgets.QWidget, Ui_StandardSyncWindow):
         database_path = self.database_path_lineedit.text()
 
         if not xml_path or not bpstat_path or not database_path:
-            show_error_window("Please make sure you've entered all paths!", 
-                              "You can do this by manually entering the path or selecting each path by clicking Browse.", 
+            show_error_window("Please make sure you've entered all paths!",
+                              "You can do this by manually entering the path or selecting each path by clicking Browse.",
                               "Paths not defined")
             return
-        
+
         # Check if filepaths are valid - validation done here for direct access to error window
         # TODO: Custom exception class, move out of this UI function
-        ## try generating libpytuneslibrary from specified XML
+        # TODO: Move the actual "processing" out
+        # try generating the libpytunes library from specified XML
         try:
             self.lib = Library(xml_path)
         except xml.parsers.expat.ExpatError as e:
-            show_error_window("Invalid XML file!", 
-                                f"Couldn't parse XML file (if it is one) - {e}", 
+            show_error_window("Invalid XML file!",
+                                f"Couldn't parse XML file (if it is one) - {e}",
                                 "Invalid XML file")
             return
         except FileNotFoundError:
-            show_error_window("File not found!", 
-                                "The entered path doesn't appear to exist.", 
+            show_error_window("File not found!",
+                                "The entered path doesn't appear to exist.",
                                 "Invalid XML filepath")
             return
 
         ## try generating bpstat library
         self.bpsongs = bpparse.get_songs(bpstat_path)
         if not self.bpsongs:
-            show_error_window(".bpstat malformed!", 
+            show_error_window(".bpstat malformed!",
                                 "The program wasn't able to find any valid songs in this file.",
                                 "Invalid .bpstat file")
             return
 
         ## try getting elements from db
-        try:  
+        try:
             models.initialize_engine(database_path)
         except Exception as e:
-            show_error_window("Something went wrong while connecting to the database!", 
-                               str(e), 
+            show_error_window("Something went wrong while connecting to the database!",
+                               str(e),
                                "Database error")
             return
         with models.Session() as session:
@@ -323,10 +356,13 @@ class StandardSyncWindow(QtWidgets.QWidget, Ui_StandardSyncWindow):
             return
 
         # call helper function
-        existing_data, new_data = bpsynctools.standard_sync_arrays_from_data(self.lib, self.bpsongs, self.db_songs)
+        existing_data, new_data = bpsynctools.standard_sync_arrays_from_data(self.lib, self.bpsongs)
 
         self.songs_changed_table.set_data(existing_data)
         self.new_songs_table.set_data(new_data)
+
+        # Mark database as ready
+        self.db_initialized = True
 
         # TODO: Calculate top-right statistics
 
@@ -343,14 +379,14 @@ class StandardSyncWindow(QtWidgets.QWidget, Ui_StandardSyncWindow):
         backup_directory = self.backup_path_lineedit.text()
 
         if not(mp3_target_directory and data_directory and backup_directory and self.lib):
-            show_error_window("Missing required fields!", 
-                              "Please make sure you've loaded an XML and set everything under Options.", 
+            show_error_window("Missing required fields!",
+                              "Please make sure you've loaded an XML and set everything under Options.",
                               "Required fields missing")
             return
 
         # Calculate bpstat prefix
         bpstat_prefix = self.bpsongs[0].get_bpstat_prefix()
-        
+
         # Get track IDs of selected items for processing/tracking by iterating over table widget's model data
         new_data = self.new_songs_table.table_model.array_data
         selected_ids_processing = []
@@ -359,6 +395,9 @@ class StandardSyncWindow(QtWidgets.QWidget, Ui_StandardSyncWindow):
             if row[1]:  # Check for mp3 processing
                 selected_ids_processing.append(row[0])
             if row[2]:  # Check for db tracking
+                # TODO: does it make sense to filter out already-tracked songs from the table here, or in StandardWorker?
+                # i'd say the worker thread shouldn't need to have awareness of the conditions for adding a song
+                # a simple fix is to just check the already-tracked songs table and see if this id exists
                 selected_ids_tracking.append(row[0])
 
         # Create progress bar for element processing (the longest operation)
@@ -367,12 +406,97 @@ class StandardSyncWindow(QtWidgets.QWidget, Ui_StandardSyncWindow):
 
         # Start processing thread
         # BUG: This does not kill the thread even if the windows are closed
-        song_worker = bpsyncwidgets.StandardWorker(self.lib, selected_ids_processing, selected_ids_tracking, 
+        song_worker = bpsyncwidgets.StandardWorker(self.lib, selected_ids_processing, selected_ids_tracking,
                                                     mp3_target_directory, data_directory, bpstat_prefix, backup_directory, backup_paths,
                                                     self.songs_changed_table.table_model.array_data)
         song_worker.signal_connection.songStartedProcessing.connect(lambda progress_val, song_string: progress_window.updateFields(progress_val, song_string))
         self.thread_manager.start(song_worker)
-       
+
+class IgnoredSongsDialog(QtWidgets.QDialog, Ui_IgnoredSongsDialog):
+    def __init__(self, parent, ignored_songs):
+        """
+        Set up everything related to the IgnoredSongsDialog.
+
+        :param parent: The parent window of this widget.
+        :param ignored_songs: The result of performing a query for all
+            IgnoredSong objects in the database.
+        """
+        super().__init__(parent)
+
+        self.setWindowModality(QtCore.Qt.ApplicationModal)
+        self.setupUi(self)
+        
+        self.ignored_songs = ignored_songs
+
+        self.setup_ignored_songs_table()
+
+    def setup_ignored_songs_table(self):
+        # create dict for bpstat songs, by persistent id
+        # take this information from the libpytunes Library object in the parent class
+        libsongs = {}
+        for song in self.parent().lib.songs.values():
+            libsongs[song.persistent_id] = song
+
+        # The current songs present in the new songs table. Prevents songs from being added twice through this dialog
+        # into the new songs table.
+        current_data = self.parent().new_songs_table.table_model.array_data
+        existing_track_ids = [row[0] for row in current_data]
+
+        # Generate data
+        data = []
+        
+        for ignored_song in self.ignored_songs:
+            # get associated libpytunes Song object from its ID
+            try:
+                song = libsongs[ignored_song.persistent_id]
+            except KeyError:
+                logging.info(f"Failed to look up {ignored_song.persistent_id} when building the IgnoredSongsDialog table, was it deleted?")
+                continue
+
+            # Check if it is already in the new songs table (which is, unfortunately, a linear search)
+            if song.track_id not in existing_track_ids:
+                # get all the needed data, mark its tracking box as off by default
+                data.append([song.track_id, 0, song.name, song.artist, song.album, song.play_count, song.location])
+
+        # Static table information
+        headers = ["Track ID", "Track?", "Title", "Artist", "Album", "Plays", "Filepath"]
+        box_columns = [1]
+        filter_on = [2, 3, 4]
+
+        column_sizes = [50, 80, 200, 120, 120, 50, 200]
+
+        self.ignored_song_table.setup(headers, data, box_columns, filter_on)
+        self.ignored_song_table.set_column_widths(column_sizes)
+
+    def accept(self):
+        """
+        On dialog accept (OK button is clicked).
+        """
+        # Get the persistent IDs of the new songs to add
+        unignored_songs = {}  # A 2D array.
+
+        table_data = self.ignored_song_table.table_model.array_data
+        for row in table_data:
+            if row[1]:  # If "Track?" box checked
+                # Note that the parent's library should be an unmodified libpytunes Library
+                # object, which has its keys as the track ID (and not persistent ID)
+                unignored_songs[row[0]] = self.parent().lib.songs[row[0]]
+
+        # Generate the 2D array containing the data needed
+        new_data = bpsynctools.first_sync_array_from_libpysongs(unignored_songs)
+
+        # Get the parent's table's underlying model data for the new songs table
+        current_data = self.parent().new_songs_table.table_model.array_data
+
+        # Append to this underlying model data
+        # note: [[1, 2], [3, 4]] + [[5, 6], [7, 8]] = [[1, 2], [3, 4], [5, 6], [7, 8]]
+        current_data += new_data
+
+        # Update the table with this new data
+        self.parent().new_songs_table.set_data(current_data)
+        
+        # Call super
+        super().accept()
 
 if __name__ == "__main__":
     app = QtWidgets.QApplication(sys.argv)

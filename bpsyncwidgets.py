@@ -153,7 +153,7 @@ class CheckBoxHeader(QtWidgets.QHeaderView):
 
             # contains() only supports integer QPoints, not floating-point QPointF
             if rect.contains(click_point):
-                self.setIsChecked(column_index, not self.checkbox_columns[column_index]) # TODO: 1 is placeholder number
+                self.setIsChecked(column_index, not self.checkbox_columns[column_index])
                 self.checkBoxClicked.emit(column_index, self.checkbox_columns[column_index])  # Tell parent about new state in column
                 return
 
@@ -300,9 +300,9 @@ class SongView(QTableView):
         - SelectionBehavior is QAbstractItemView.SelectRows
         - Last column is stretched to fit viewable table
     """
-    # TODO: Create top-row used for unchecking and checking all, if checkboxes used
-    #       See https://wiki.qt.io/Technical_FAQ#How_can_I_insert_a_checkbox_into_the_header_of_my_view.3F
-    #       Or https://stackoverflow.com/questions/21557913/checkbox-in-a-header-cell-in-qtableview
+    # How to insert a checkbox into a header of a view:
+    # See https://wiki.qt.io/Technical_FAQ#How_can_I_insert_a_checkbox_into_the_header_of_my_view.3F
+    # Or https://stackoverflow.com/questions/21557913/checkbox-in-a-header-cell-in-qtableview
 
     # Using custom derived classes in Designer:
     # https://stackoverflow.com/questions/19622014/how-do-i-use-promote-to-in-qt-designer-in-pyqt4
@@ -513,12 +513,13 @@ class SongWorker(QtCore.QRunnable):
      - the target directory to write app data (database, new XMLs, .bpstats, etc.)
      - the filepath prefix to use in the .bpstat itself
     """
-    def __init__(self, lib, processing_ids, tracking_ids, mp3_target_directory, data_directory, bpstat_prefix):
+    def __init__(self, lib, processing_ids, tracking_ids, ignore_ids, mp3_target_directory, data_directory, bpstat_prefix):
         super(SongWorker, self).__init__()
 
         self.lib = lib
         self.processing_ids = processing_ids
         self.tracking_ids = tracking_ids
+        self.ignore_ids = ignore_ids
         self.mp3_target_directory = mp3_target_directory
         self.data_directory = data_directory
         self.bpstat_prefix = bpstat_prefix
@@ -534,14 +535,13 @@ class SongWorker(QtCore.QRunnable):
         os.makedirs(self.data_directory, exist_ok=True)
         os.makedirs(self.mp3_target_directory, exist_ok=True)
         
-        song_arr = [] #array holding libpytunes songs to add to the database for tracking
+        song_arr = []  # array holding libpytunes songs to add to the database for tracking
 
         max_to_track = len(self.tracking_ids)
 
         # bpstat generation and processing can happen at the same time
 
         # iterate only over ids to process, which is the longest task
-        # TODO: is this where we should check if an ID already exists in the tracker and therefore doesn't need to be added?
         for index, track_id in enumerate(self.tracking_ids):
             song = self.lib.songs[track_id]
 
@@ -562,10 +562,11 @@ class SongWorker(QtCore.QRunnable):
 
         # Create/write database with new songs
         models.initialize_engine(self.data_directory)
-        # Only create db if it hasn't been made yet
+        # Only create underlying tables if the file clearly does not exist yet
         if(not os.path.isfile(os.path.join(self.data_directory, "songs.db"))):
             models.create_db()
         models.add_libpy_songs(song_arr)
+        models.add_ignored_ids(self.ignore_ids)
 
 class StandardWorker(SongWorker):
     """

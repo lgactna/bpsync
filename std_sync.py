@@ -25,7 +25,7 @@ class Ui_StandardSyncWindow(object):
     def setupUi(self, StandardSyncWindow):
         if not StandardSyncWindow.objectName():
             StandardSyncWindow.setObjectName(u"StandardSyncWindow")
-        StandardSyncWindow.resize(840, 670)
+        StandardSyncWindow.resize(840, 754)
         self.verticalLayout = QVBoxLayout(StandardSyncWindow)
         self.verticalLayout.setObjectName(u"verticalLayout")
         self.label_2 = QLabel(StandardSyncWindow)
@@ -170,6 +170,11 @@ class Ui_StandardSyncWindow(object):
         self.groupBox.setObjectName(u"groupBox")
         self.verticalLayout_2 = QVBoxLayout(self.groupBox)
         self.verticalLayout_2.setObjectName(u"verticalLayout_2")
+        self.show_ignored_songs_button = QPushButton(self.groupBox)
+        self.show_ignored_songs_button.setObjectName(u"show_ignored_songs_button")
+
+        self.verticalLayout_2.addWidget(self.show_ignored_songs_button)
+
         self.horizontalLayout_3 = QHBoxLayout()
         self.horizontalLayout_3.setObjectName(u"horizontalLayout_3")
         self.label_12 = QLabel(self.groupBox)
@@ -262,7 +267,7 @@ class Ui_StandardSyncWindow(object):
 
     def retranslateUi(self, StandardSyncWindow):
         StandardSyncWindow.setWindowTitle(QCoreApplication.translate("StandardSyncWindow", u"Standard Sync", None))
-        self.label_2.setText(QCoreApplication.translate("StandardSyncWindow", u"This tool compares any changes in an existing song database and writes an updated XML and .bpstat. If applicable, it also prompts you to copy and prepare any new songs that were not tracked in the XML previously.", None))
+        self.label_2.setText(QCoreApplication.translate("StandardSyncWindow", u"This tool compares any changes in an existing song database and writes an updated XML and .bpstat. If applicable, it also prompts you to copy and prepare any new songs that were not tracked in the XML previously or require a reprocess (e.g. a start/stop time change).", None))
         self.label.setText(QCoreApplication.translate("StandardSyncWindow", u"XML filepath", None))
         self.xml_browse_button.setText(QCoreApplication.translate("StandardSyncWindow", u"Browse", None))
         self.label_3.setText(QCoreApplication.translate("StandardSyncWindow", u".bpstat filepath", None))
@@ -272,9 +277,10 @@ class Ui_StandardSyncWindow(object):
         self.load_all_button.setText(QCoreApplication.translate("StandardSyncWindow", u"Load", None))
         self.label_8.setText(QCoreApplication.translate("StandardSyncWindow", u"Songs changed", None))
         self.label_18.setText(QCoreApplication.translate("StandardSyncWindow", u"Search", None))
-        self.label_11.setText(QCoreApplication.translate("StandardSyncWindow", u"New songs", None))
+        self.label_11.setText(QCoreApplication.translate("StandardSyncWindow", u"New/modified songs", None))
         self.label_19.setText(QCoreApplication.translate("StandardSyncWindow", u"Search", None))
         self.groupBox.setTitle(QCoreApplication.translate("StandardSyncWindow", u"Options", None))
+        self.show_ignored_songs_button.setText(QCoreApplication.translate("StandardSyncWindow", u"Show previously ignored songs", None))
         self.label_12.setText(QCoreApplication.translate("StandardSyncWindow", u"Data directory", None))
         self.data_browse_button.setText(QCoreApplication.translate("StandardSyncWindow", u"Browse", None))
         self.label_20.setText(QCoreApplication.translate("StandardSyncWindow", u"The newly generated .bpstat and XML will be sent here.", None))
