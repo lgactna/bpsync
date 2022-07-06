@@ -62,8 +62,6 @@ class MainMenuWindow(QtWidgets.QWidget, Ui_MainMenuWindow):
         pass
 
 class FirstTimeWindow(QtWidgets.QWidget, Ui_FirstTimeWindow):
-    # TODO: right-click context menu with more information + volume edit
-    # TODO: extended info screen detailing all fields, plus edit functionality
     def __init__(self):
         super().__init__()
 
@@ -192,8 +190,6 @@ class FirstTimeWindow(QtWidgets.QWidget, Ui_FirstTimeWindow):
         progress_window.show()
 
 class StandardSyncWindow(QtWidgets.QWidget, Ui_StandardSyncWindow):
-    # TODO: right-click context menu with more information + volume edit
-    # TODO: extended info screen
     def __init__(self):
         super().__init__()
 
@@ -228,6 +224,12 @@ class StandardSyncWindow(QtWidgets.QWidget, Ui_StandardSyncWindow):
         self.start_button.clicked.connect(self.start_processing)
 
         ## Table functionality
+        self.songs_changed_table.customContextMenuRequested.connect(
+            lambda pos: self.songs_changed_table.show_context_menu(pos, self.lib))
+        self.songs_changed_table.context_menu_enabled = True
+        self.new_songs_table.customContextMenuRequested.connect(
+            lambda pos: self.new_songs_table.show_context_menu(pos, self.lib))
+        self.new_songs_table.context_menu_enabled = True
         self.songs_changed_lineedit.textChanged.connect(lambda text: self.songs_changed_table.proxy.set_filter_text(text))
         self.new_songs_lineedit.textChanged.connect(lambda text: self.new_songs_table.proxy.set_filter_text(text))
 

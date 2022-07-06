@@ -797,7 +797,7 @@ class SongInfoDialog(QtWidgets.QDialog, Ui_SongInfoDialog):
         # Size is in bytes.
         self.sizeLabel.setText(bpsynctools.humanbytes(song.size))
         # https://stackoverflow.com/questions/775049/how-do-i-convert-seconds-to-hours-minutes-and-seconds
-        self.totalLengthLabel.setText(str(datetime.timedelta(seconds=song.total_time)))
+        self.totalLengthLabel.setText(str(datetime.timedelta(milliseconds=song.total_time)))
         self.trackTypeLabel.setText(song.track_type)
         self.bpmLabel.setText(str(song.bpm))
         self.dateModifiedLabel.setText(time.strftime("%Y-%m-%d %H:%M:%S", song.date_modified))
@@ -889,7 +889,7 @@ class SongInfoDialog(QtWidgets.QDialog, Ui_SongInfoDialog):
         On dialog accept (OK button is clicked).
         """
         pass
-        # TODO: implement this
+        # TODO: implement extended song info accept logic
         # This requires additional logic to have the table that requested
         # this in the first place to reflect the new values, since the underlying
         # data model isn't "connected" to the library.

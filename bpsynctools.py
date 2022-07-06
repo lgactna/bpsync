@@ -132,7 +132,7 @@ def add_to_exportimport(song, exportimport_path):
     :param exportimport_path: The full location of the txt file to use.
     """
 
-    # check if file exists; if not, initialize it with BOM?
+    # This adds the BOM if needed
     with open(exportimport_path, "a", encoding="utf-16") as fp:
         fp.write(f"<ID>{song.persistent_id[0:8]}-{song.persistent_id[8:16]}\n")
         fp.write(f"<Plays>{song.last_playcount}\n\n")
