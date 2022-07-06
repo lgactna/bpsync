@@ -3,6 +3,8 @@ Various convenience functions
 """
 
 import os
+import platform
+import subprocess
 from shutil import copy2
 from datetime import datetime
 from math import log10
@@ -265,5 +267,46 @@ def standard_sync_arrays_from_data(library, bpstat_songs):
     new_songs_rows = first_sync_array_from_libpysongs(new_songs)
 
     return existing_songs_rows, new_songs_rows
+
+def open_file(path):
+    """
+    Reveal a given path or file in the native file explorer.
+    :param path: The filepath to "reveal".
+    """
+    # https://stackoverflow.com/questions/281888/open-explorer-on-a-file
+    # https://stackoverflow.com/questions/6631299/python-opening-a-folder-in-explorer-nautilus-finder
+    if platform.system() == "Windows":
+        # For some reason, backslashes are required for this to work.
+        # Forward slashes will just open in the "default" explorer location.
+        subprocess.Popen(["explorer", "/select,", path.replace('/', '\\')])
+    elif platform.system() == "Darwin":
+        subprocess.Popen(["open", path])
+    else:
+        subprocess.Popen(["xdg-open", path])
+
+def humanbytes(B):
+    # https://stackoverflow.com/questions/12523586/python-format-size-application-converting-b-to-kb-mb-gb-tb
+    # note: just like windows, this technically refers to kibibytes, mebibytes, etc.
+    """
+    Return the given bytes as a human friendly KB, MB, GB, or TB string.
+
+    :param B: The number of bytes.
+    """
+    B = float(B)
+    KB = float(1024)
+    MB = float(KB ** 2)  # 1,048,576
+    GB = float(KB ** 3)  # 1,073,741,824
+    TB = float(KB ** 4)  # 1,099,511,627,776
+
+    if B < KB:
+        return '{0} {1}'.format(B, 'Bytes' if 0 == B > 1 else 'Byte')
+    elif KB <= B < MB:
+        return '{0:.2f} KB'.format(B / KB)
+    elif MB <= B < GB:
+        return '{0:.2f} MB'.format(B / MB)
+    elif GB <= B < TB:
+        return '{0:.2f} GB'.format(B / GB)
+    elif TB <= B:
+        return '{0:.2f} TB'.format(B / TB)
 
 # endregion

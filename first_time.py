@@ -112,6 +112,7 @@ class Ui_FirstTimeWindow(object):
         sizePolicy.setVerticalStretch(0)
         sizePolicy.setHeightForWidth(self.table_widget.sizePolicy().hasHeightForWidth())
         self.table_widget.setSizePolicy(sizePolicy)
+        self.table_widget.setContextMenuPolicy(Qt.CustomContextMenu)
 
         self.verticalLayout_3.addWidget(self.table_widget)
 

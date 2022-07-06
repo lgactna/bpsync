@@ -1,16 +1,17 @@
 """
 Definitions for all custom Qt objects used in this project.
 """
+# unfortunately i don't know where the half-qualified and fully-qualified names are anymore
 from PySide6.QtWidgets import *
 from PySide6.QtCore import *
 from PySide6.QtGui import *
 
-from PySide6 import QtCore, QtWidgets
+from PySide6 import QtCore, QtWidgets, QtGui
 
-import os
-from datetime import datetime
-import time
+import datetime
 import logging
+import os           # All for a "show in Explorer" feature
+import time
 
 from pydub import AudioSegment
 from pydub.utils import mediainfo
@@ -21,6 +22,7 @@ import bpparse
 import models
 
 from progress import Ui_ProcessingProgress
+from song_info import Ui_SongInfoDialog
 
 # region SongView
 class CheckBoxDelegate(QtWidgets.QItemDelegate):
@@ -310,7 +312,17 @@ class SongView(QTableView):
     def __init__(self, *args, **kwargs):
         # QWidget.__init__(self, *args, **kwargs)
         super().__init__()
+        
+        # When a user selects an item, select the row (not just the cell).
         self.setSelectionBehavior(QAbstractItemView.SelectRows)
+
+        # Whether or not to allow the context menu to appear. 
+        # False by default; this is very narrow in use-case, and only works if
+        # the track ID is in the first column.
+
+        # You must still set the context menu policy to CustomContextMenu if
+        # it isn't already set.
+        self.context_menu_enabled = False
 
     def setup(self, headers, data, box_columns, filter_columns, row_height=20):
         """
@@ -389,6 +401,53 @@ class SongView(QTableView):
             # Note that setData checks for the editable flag so this won't affect 
             # the -1 "no checkbox" rows
             self.table_model.setData(source_index, new_check_state)
+
+    def show_context_menu(self, pos, library):
+        """
+        Show the context menu for a song in the table. 
+
+        Only works if:
+         - Track ID is in the first column of this table.
+         - A libpytunes Library object is available, passed in as `library`.
+
+         :param pos: The position as emitted by customContextMenuRequested.
+         :param library: A libpytunes library that corresponds to the current data in the table.
+        """
+        # Don't do anything if the context menu isn't enabled.
+        if not self.context_menu_enabled:
+            return
+        
+        # Only generate a menu if an (actual) item in the table widget is currently selected.
+        # Also, only generate a menu if the library has been loaded.
+        proxy_index = self.currentIndex()
+        if proxy_index.row() == -1 or proxy_index.column() == -1 or library is None:
+            return
+
+        # https://stackoverflow.com/questions/36614635/pyqt-right-click-menu-for-qcombobox
+        menu = QtWidgets.QMenu()
+
+        # Note that the table widget shows the results of the proxy model, so
+        # any of the QModelIndexes it returns are relative to the proxy, not the
+        # underlying source data. As a result, it's necessary to map it to the source
+        # data. Also, we always want the track ID in column 0; so it's necessary to
+        # create an index directly by taking the "real" row from the table_model and
+        # setting the column to 0.
+        source_index = self.proxy.mapToSource(proxy_index)
+        target_index = self.table_model.index(source_index.row(), 0)
+        track_number = self.table_model.data(target_index, QtCore.Qt.DisplayRole)
+        song = library.songs[track_number]
+
+        menu.addAction("Details", lambda: self.open_song_info_dialog(song))
+        menu.addAction("Show in Explorer", lambda: bpsynctools.open_file(song.location))
+
+        # https://doc.qt.io/qt-5/qwidget.html#mapToGlobal
+        # In essence, `pos` is relative to the thing requesting the context menu; therefore, you need to ask the widget
+        # to map it to the entire window for it to show up in the correct spot in the window.
+        menu.exec(self.mapToGlobal(pos))
+
+    def open_song_info_dialog(self, song):
+        self.dialog = SongInfoDialog(song)
+        self.dialog.show()
 
 # endregion
 
@@ -693,6 +752,160 @@ class ProgressWindow(logging.Handler, QtWidgets.QWidget, Ui_ProcessingProgress):
         msg = self.format(record)
         self.logger_connection.appendPlainText.emit(msg)
 
+
+class SongInfoDialog(QtWidgets.QDialog, Ui_SongInfoDialog):
+    def __init__(self, song):
+        """
+        Set up the IgnoredSongsDialog.
+
+        :param song: The libpytunes song this dialog should display information on.
+        """
+        super().__init__()
+
+        self.setWindowModality(QtCore.Qt.ApplicationModal)
+        self.setupUi(self)
+
+        self.setWindowTitle(f"Detailed song information: {song.artist} - {song.name}")
+
+        self.song = song
+
+        self.update_fields()
+        self.update_album_art()
+
+    def update_fields(self):
+        """
+        Have all fields reflect the actual values contained in the song.
+        """
+
+        song = self.song
+
+        # Top half
+        self.titleLineEdit.setText(song.name)
+        self.artistLineEdit.setText(song.artist)
+        self.albumLineEdit.setText(song.album)
+        if song.year:
+            self.yearSpinBox.setValue(song.year)
+        else:
+            self.yearSpinBox.setSpecialValueText("")
+        self.genreLineEdit.setText(song.genre)
+
+        self.trackIDLineEdit.setText(str(song.track_id))
+        self.persistentIDLineEdit.setText(song.persistent_id)
+        self.locationLineEdit.setText(song.location)
+
+        # Column 1
+        # Size is in bytes.
+        self.sizeLabel.setText(bpsynctools.humanbytes(song.size))
+        # https://stackoverflow.com/questions/775049/how-do-i-convert-seconds-to-hours-minutes-and-seconds
+        self.totalLengthLabel.setText(str(datetime.timedelta(seconds=song.total_time)))
+        self.trackTypeLabel.setText(song.track_type)
+        self.bpmLabel.setText(str(song.bpm))
+        self.dateModifiedLabel.setText(time.strftime("%Y-%m-%d %H:%M:%S", song.date_modified))
+        self.dateAddedLabel.setText(time.strftime("%Y-%m-%d %H:%M:%S", song.date_added))
+        self.bitrateLabel.setText(str(song.bit_rate))
+        self.sampleRateLabel.setText(str(song.sample_rate))
+
+        # Column 2
+        if song.start_time:
+            self.startTimeSpinBox.setValue(song.start_time)
+        else:
+            self.yearSpinBox.setSpecialValueText("(start)")
+        self.startTimeSpinBox.setMinimum(0)
+        self.startTimeSpinBox.setMaximum(song.total_time)
+        if song.stop_time:
+            self.stopTimeSpinBox.setValue(song.stop_time)
+        else:
+            self.yearSpinBox.setSpecialValueText("(end)")
+        self.stopTimeSpinBox.setMinimum(0)
+        self.stopTimeSpinBox.setMaximum(song.total_time)
+        if song.disc_number:
+            self.discNumberSpinBox.setValue(song.disc_number)
+        else:
+            self.discNumberSpinBox.setSpecialValueText("")
+        if song.disc_count:
+            self.discCountSpinBox.setValue(song.disc_count)
+        else:
+            self.discCountSpinBox.setSpecialValueText("")
+        if song.track_number:
+            self.trackNumberSpinBox.setValue(song.track_number)
+        else:
+            self.trackNumberSpinBox.setSpecialValueText("")
+        if song.track_count:
+            self.trackCountSpinBox.setValue(song.track_count)
+        else:
+            self.trackCountSpinBox.setSpecialValueText("")
+        self.ratingComputedCheckBox.setChecked(song.rating_computed if song.rating_computed else False)
+        self.compilationCheckBox.setChecked(song.compilation if song.compilation else False)
+
+        # Column 3
+        self.volumeAdjustmentSpinBox.setValue(song.volume_adjustment if song.volume_adjustment else 0)
+        self.playCountSpinBox.setValue(song.play_count if song.play_count else 0)
+        if song.lastplayed:
+            # BUG: struct_time has no attribute total_seconds
+            last_played_qtime = QtCore.QDateTime.fromSecsSinceEpoch(time.mktime(song.lastplayed))
+            self.lastPlayedDateTimeEdit.setDateTime(last_played_qtime)
+        else:
+            self.lastPlayedDateTimeEdit.setSpecialValueText("(never played)")
+        if song.skip_count:
+            self.skipCountSpinBox.setValue(song.skip_count)
+        else:
+            self.skipCountSpinBox.setValue(0)
+        if song.skip_date:
+            last_skipped_qtime = QtCore.QDateTime.fromSecsSinceEpoch(time.mktime(song.skip_date))
+            self.lastSkippedDateTimeEdit.setDateTime(last_skipped_qtime)
+        else:
+            self.lastSkippedDateTimeEdit.setSpecialValueText("(never skipped)")
+        if song.album_rating:
+            self.albumRatingSpinBox.setValue(song.album_rating)
+        else:
+            self.albumRatingSpinBox.setSpecialValueText("")
+        self.lovedCheckBox.setChecked(song.loved if song.loved else False)
+        self.dislikedCheckBox.setChecked(song.disliked if song.disliked else False)
+    
+    def update_album_art(self):
+        # Get location of song (which is guaranteed to exist, probably)
+        # Load its data via eyed3
+        audio_file = eyed3.load(self.song.location)
+
+        if len(audio_file.tag.images) == 0:
+            logging.warning(f"Audio file at {self.song.location} has no image baked-in.")
+            return
+        elif len(audio_file.tag.images) > 1:
+            logging.info(f"Audio file at {self.song.location} appears to have more than one image embedded, showing the first one.")
+
+        image = audio_file.tag.images[0]
+        image_data = image.image_data
+
+        q_image = QtGui.QImage()
+        q_image.loadFromData(image_data)
+
+        pixmap = QtGui.QPixmap.fromImage(q_image)
+        pixmap_scaled = pixmap.scaled(self.songImageLabel.width(), self.songImageLabel.height(), QtCore.Qt.KeepAspectRatio)
+
+        self.songImageLabel.setPixmap(pixmap_scaled)
+
+    def accept(self):
+        """
+        On dialog accept (OK button is clicked).
+        """
+        pass
+        # TODO: implement this
+        # This requires additional logic to have the table that requested
+        # this in the first place to reflect the new values, since the underlying
+        # data model isn't "connected" to the library.
+        # 
+        # The "best" way is most likely to give this a signal, have a slot in 
+        # SongView, then have that emit its own signal with the song that's changed.
+        # Then, StandardSyncWindow/FirstTimeWindow can connect to that "song object
+        # changed in this specific table" signal and edit the table model itself from there.
+        #
+        # In other words, this means: 
+        # - a "song edited" signal in SongInfoDialog, passing out the libpytunes Song object
+        # - a "song edited" signal in SongView, passing out the same
+        # - a slot in the respective windows containing the SongView widgets
+        # - one function in the respective windows for each table, 
+        #   holding the logic for editing the underlying array data and telling
+        #   the SongView to update
 
 # endregion
 

@@ -121,6 +121,7 @@ class Ui_StandardSyncWindow(object):
         sizePolicy.setVerticalStretch(0)
         sizePolicy.setHeightForWidth(self.songs_changed_table.sizePolicy().hasHeightForWidth())
         self.songs_changed_table.setSizePolicy(sizePolicy)
+        self.songs_changed_table.setContextMenuPolicy(Qt.CustomContextMenu)
 
         self.verticalLayout.addWidget(self.songs_changed_table)
 
@@ -148,6 +149,7 @@ class Ui_StandardSyncWindow(object):
         self.new_songs_table.setObjectName(u"new_songs_table")
         sizePolicy.setHeightForWidth(self.new_songs_table.sizePolicy().hasHeightForWidth())
         self.new_songs_table.setSizePolicy(sizePolicy)
+        self.new_songs_table.setContextMenuPolicy(Qt.CustomContextMenu)
 
         self.verticalLayout.addWidget(self.new_songs_table)
 

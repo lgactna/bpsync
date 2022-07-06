@@ -1,9 +1,12 @@
+# Standard library
 import logging
 import xml.parsers.expat
 import sys
 
+# Forked libpytunes
 from libpytunes import Library
 
+# Local imports
 import bpsynctools
 import bpsyncwidgets
 import bpparse
@@ -83,6 +86,11 @@ class FirstTimeWindow(QtWidgets.QWidget, Ui_FirstTimeWindow):
         self.data_browse_button.clicked.connect(self.data_save_prompt)
         self.start_button.clicked.connect(self.start_processing)
         # Table functionality
+        # Note: the context menu policy must be changed to 
+        # self.table_widget.setContextMenuPolicy(QtCore.Qt.CustomContextMenu)
+        # for this to work
+        self.table_widget.customContextMenuRequested.connect(lambda pos: self.table_widget.show_context_menu(pos, self.lib))
+        self.table_widget.context_menu_enabled = True
         self.table_filter_lineedit.textChanged.connect(lambda text: self.table_widget.proxy.set_filter_text(text))
 
         # Table
@@ -497,6 +505,7 @@ class IgnoredSongsDialog(QtWidgets.QDialog, Ui_IgnoredSongsDialog):
         
         # Call super
         super().accept()
+
 
 if __name__ == "__main__":
     app = QtWidgets.QApplication(sys.argv)
