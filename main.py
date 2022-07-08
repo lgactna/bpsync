@@ -214,7 +214,6 @@ class FirstTimeWindow(QtWidgets.QWidget, Ui_FirstTimeWindow):
         progress_window = bpsyncwidgets.ProgressWindow(len(selected_ids_processing))
 
         # Start processing thread
-        # BUG: This does not kill the thread even if the windows are closed
         song_worker = bpsyncwidgets.SongWorker(self.lib, selected_ids_processing, selected_ids_tracking, ignored_ids_tracking, mp3_target_directory, data_directory, bpstat_prefix)
         song_worker.signal_connection.songStartedProcessing.connect(lambda progress_val, song_string: progress_window.updateFields(progress_val, song_string))
 
@@ -362,7 +361,6 @@ class StandardSyncWindow(QtWidgets.QWidget, Ui_StandardSyncWindow):
 
         # Check if filepaths are valid - validation done here for direct access to error window
         # TODO: Custom exception class, move out of this UI function
-        # TODO: Move the actual "processing" out
         # try generating the libpytunes library from specified XML
         try:
             self.lib = Library(xml_path)
@@ -451,7 +449,6 @@ class StandardSyncWindow(QtWidgets.QWidget, Ui_StandardSyncWindow):
         progress_window.show()
 
         # Start processing thread
-        # BUG: This does not kill the thread even if the windows are closed
         song_worker = bpsyncwidgets.StandardWorker(self.lib, selected_ids_processing, selected_ids_tracking,
                                                     mp3_target_directory, data_directory, bpstat_prefix, backup_directory, backup_paths,
                                                     self.songs_changed_table.table_model.array_data)

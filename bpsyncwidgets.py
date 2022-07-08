@@ -611,7 +611,6 @@ class SongWorker(QtCore.QRunnable):
         self.stop_flag = True
 
     # @QtCore.Slot()
-    # TODO: Add signal/slot to stop processing, e.g. when processing window is closed
     def run(self):
         os.makedirs(self.data_directory, exist_ok=True)
         os.makedirs(self.mp3_target_directory, exist_ok=True)
