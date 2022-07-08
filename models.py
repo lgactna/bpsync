@@ -12,6 +12,8 @@ import logging
 import os
 from pathlib import Path
 
+from bpsynctools import calculate_file_hash
+
 from sqlalchemy import Table, Column, Integer, String, Boolean, Text
 from sqlalchemy import create_engine
 
@@ -32,6 +34,9 @@ class StoredSong(Base):
 
     persistent_id = Column(String(20), primary_key=True)
     last_playcount = Column(Integer, nullable=False)
+
+    # hex digest representation (not pure bytes)
+    blake2b_hash = Column(String(128))
 
     # Below are definitions of all libpytunes Song fields that would require a reprocess
     # Fields are nullable by default, i.e. nullable=True so these fields can be empty unless specified otherwise
@@ -119,7 +124,8 @@ class StoredSong(Base):
         or self.work != libpysong.work \
         or self.movement_name != libpysong.movement_name \
         or self.movement_number != libpysong.movement_number \
-        or self.movement_count != libpysong.movement_count:
+        or self.movement_count != libpysong.movement_count \
+        or self.blake2b_hash != calculate_file_hash(libpysong.location):
             return True
         else:
             return False
@@ -177,6 +183,8 @@ def add_libpy_songs(songs):
 
         new_song.persistent_id = song.persistent_id
         new_song.last_playcount = song.play_count if song.play_count else 0
+
+        new_song.blake2b_hash = calculate_file_hash(song.location)
 
         # The rest are all nullable, so None is ok to assign
         # It's also valid to be comparing null/None, since a change
