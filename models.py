@@ -12,8 +12,6 @@ import logging
 import os
 from pathlib import Path
 
-from bpsynctools import calculate_file_hash
-
 from sqlalchemy import Table, Column, Integer, String, Boolean, Text
 from sqlalchemy import create_engine
 
@@ -239,3 +237,12 @@ def commit_changes():
     """Commit changes to database."""
     with Session() as session:
         session.commit()
+
+def calculate_file_hash(filepath) -> str:
+    # https://stackoverflow.com/questions/16874598/how-do-i-calculate-the-md5-checksum-of-a-file-in-python
+    with open(filepath, "rb") as f:
+        file_hash = hashlib.blake2b()
+        while chunk := f.read(8192):
+            file_hash.update(chunk)
+
+    return file_hash.hexdigest() # len = 128

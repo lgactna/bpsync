@@ -138,15 +138,6 @@ def add_to_exportimport(song, exportimport_path):
         fp.write(f"<ID>{song.persistent_id[0:8]}-{song.persistent_id[8:16]}\n")
         fp.write(f"<Plays>{song.last_playcount}\n\n")
 
-def calculate_file_hash(filepath) -> str:
-    # https://stackoverflow.com/questions/16874598/how-do-i-calculate-the-md5-checksum-of-a-file-in-python
-    with open(filepath, "rb") as f:
-        file_hash = hashlib.blake2b()
-        while chunk := f.read(8192):
-            file_hash.update(chunk)
-
-    return file_hash.hexdigest() # len = 128
-
 # endregion
 
 def create_backup(file_path, output_folder='backups'):
