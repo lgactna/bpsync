@@ -765,7 +765,7 @@ class ProgressWindow(logging.Handler, QtWidgets.QWidget, Ui_ProcessingProgress):
         self.progress_label.setText(f"(0/{maximum})")
 
         # Cancel button functionality
-        self.cancelButton.clicked.connect(lambda: self.logger_connection.canceled.emit())
+        self.cancelButton.clicked.connect(self.cancel_event)
 
         # Set up logger
         self.setFormatter(logging.Formatter('%(asctime)s [%(levelname)s] - %(message)s'))
@@ -783,6 +783,9 @@ class ProgressWindow(logging.Handler, QtWidgets.QWidget, Ui_ProcessingProgress):
         self.song_label.setText(new_string)
         self.progress_bar.setValue(new_progress)
 
+        if new_progress == self.maximum:
+            self.cancelButton.setDisabled(True)
+
     def emit(self, record):
         """For logging support"""
         # https://stackoverflow.com/questions/28655198/best-way-to-display-logs-in-pyqt
@@ -791,8 +794,13 @@ class ProgressWindow(logging.Handler, QtWidgets.QWidget, Ui_ProcessingProgress):
 
     def closeEvent(self, event):
         # Always emit the cancel signal before closing
-        self.logger_connection.canceled.emit()
+        self.cancel_event()
         event.accept()
+    
+    def cancel_event(self):
+        logging.info("Cancellation of processing requested")
+        self.logger_connection.emit_cancel()
+        self.cancelButton.setDisabled(True)
 
 class SongInfoDialog(QtWidgets.QDialog, Ui_SongInfoDialog):
     # Signal emitted when dialog is accepted and the song needs to be passed up the chain
