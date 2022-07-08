@@ -13,12 +13,10 @@ import logging
 import os           # All for a "show in Explorer" feature
 import time
 
-from pydub import AudioSegment
-from pydub.utils import mediainfo
 import eyed3
+import libpytunes
 
 import bpsynctools
-import bpparse
 import models
 
 from progress import Ui_ProcessingProgress
@@ -309,6 +307,10 @@ class SongView(QTableView):
     # Using custom derived classes in Designer:
     # https://stackoverflow.com/questions/19622014/how-do-i-use-promote-to-in-qt-designer-in-pyqt4
 
+    # Custom signal to indicate a song has changed. It is the window's responsibility
+    # to know how to handle this.
+    songChanged = QtCore.Signal(libpytunes.Song)
+
     def __init__(self, *args, **kwargs):
         # QWidget.__init__(self, *args, **kwargs)
         super().__init__()
@@ -447,6 +449,8 @@ class SongView(QTableView):
 
     def open_song_info_dialog(self, song):
         self.dialog = SongInfoDialog(song)
+        self.dialog.songChanged.connect(lambda song: self.songChanged.emit(song))
+
         self.dialog.show()
 
 # endregion
@@ -531,11 +535,19 @@ class ProgressWindowConnection(QtCore.QObject):
 
     The logger must also be setup within ProgressWindow.
 
-    This resolves a multiple inheritance conflict in ProgressWindow due to emit().
+    This resolves a multiple inheritance conflict in ProgressWindow due to emit()
+    in logging.handler.
     """
     # Fixes emit() conflict due to multiple inheritance
     # https://stackoverflow.com/questions/52479442/running-a-long-python-calculation-in-a-thread-with-logging-to-a-qt-window-cras/52492689#52492689
     appendPlainText = QtCore.Signal(str)
+
+    canceled = QtCore.Signal()
+    def __init__(self):
+        super().__init__()
+
+    def emit_cancel(self):
+        self.canceled.emit()
 
 # Only for local execution
 class TestWorker(QtCore.QRunnable):
@@ -585,8 +597,18 @@ class SongWorker(QtCore.QRunnable):
 
         self.signal_connection = SongWorkerConnection()
 
-        self.root_name = datetime.now().strftime("%Y-%m-%d %H-%M-%S (new)")
+        self.root_name = datetime.datetime.now().strftime("%Y-%m-%d %H-%M-%S (new)")
         self.bpstat_path = os.path.join(self.data_directory, f"{self.root_name}.bpstat")
+
+        self.stop_flag = False
+
+    @QtCore.Slot()
+    def stop_thread(self):
+        """
+        Enables the stop flag, does what it says on the label
+        """
+        # Note: requestInterruption and isInterruptionRequested is likely better.
+        self.stop_flag = True
 
     # @QtCore.Slot()
     # TODO: Add signal/slot to stop processing, e.g. when processing window is closed
@@ -602,6 +624,12 @@ class SongWorker(QtCore.QRunnable):
 
         # iterate only over ids to process, which is the longest task
         for index, track_id in enumerate(self.tracking_ids):
+            # Check for thread stop
+            if self.stop_flag:
+                logging.info("SongWorker thread was stopped during bpstat generation")
+                self.signal_connection.songStartedProcessing.emit(index, f"Processing stopped - you can close this window.")
+                return
+
             song = self.lib.songs[track_id]
 
             logging.info(f"Added {song.name} ({song.persistent_id}) to database for tracking ({index + 1}/{max_to_track})")
@@ -610,6 +638,12 @@ class SongWorker(QtCore.QRunnable):
             song_arr.append(song)
 
         for index, track_id in enumerate(self.processing_ids):
+            # Check for thread stop
+            if self.stop_flag:
+                logging.info("SongWorker thread was stopped during song processing")
+                self.signal_connection.songStartedProcessing.emit(index, f"Processing stopped - you can close this window.")
+                return
+
             song = self.lib.songs[track_id]
 
             logging.info(f"Processing {song.name} ({song.persistent_id})")
@@ -710,6 +744,7 @@ class ProgressWindow(logging.Handler, QtWidgets.QWidget, Ui_ProcessingProgress):
     :param maximum: The maximum value of the progress bar.
     """
     # Derived with help from https://stackoverflow.com/a/60528393 and its comments
+
     def __init__(self, maximum): # top-level widget, no "parent"
         # Setup three parent classes + UI
         super().__init__()
@@ -729,6 +764,9 @@ class ProgressWindow(logging.Handler, QtWidgets.QWidget, Ui_ProcessingProgress):
 
         self.song_label.setText("Waiting on database...")
         self.progress_label.setText(f"(0/{maximum})")
+
+        # Cancel button functionality
+        self.cancelButton.clicked.connect(lambda: self.logger_connection.canceled.emit())
 
         # Set up logger
         self.setFormatter(logging.Formatter('%(asctime)s [%(levelname)s] - %(message)s'))
@@ -752,8 +790,15 @@ class ProgressWindow(logging.Handler, QtWidgets.QWidget, Ui_ProcessingProgress):
         msg = self.format(record)
         self.logger_connection.appendPlainText.emit(msg)
 
+    def closeEvent(self, event):
+        # Always emit the cancel signal before closing
+        self.logger_connection.canceled.emit()
+        event.accept()
 
 class SongInfoDialog(QtWidgets.QDialog, Ui_SongInfoDialog):
+    # Signal emitted when dialog is accepted and the song needs to be passed up the chain
+    songChanged = QtCore.Signal(libpytunes.Song)
+
     def __init__(self, song):
         """
         Set up the IgnoredSongsDialog.
@@ -841,7 +886,6 @@ class SongInfoDialog(QtWidgets.QDialog, Ui_SongInfoDialog):
         self.volumeAdjustmentSpinBox.setValue(song.volume_adjustment if song.volume_adjustment else 0)
         self.playCountSpinBox.setValue(song.play_count if song.play_count else 0)
         if song.lastplayed:
-            # BUG: struct_time has no attribute total_seconds
             last_played_qtime = QtCore.QDateTime.fromSecsSinceEpoch(time.mktime(song.lastplayed))
             self.lastPlayedDateTimeEdit.setDateTime(last_played_qtime)
         else:
@@ -887,25 +931,22 @@ class SongInfoDialog(QtWidgets.QDialog, Ui_SongInfoDialog):
     def accept(self):
         """
         On dialog accept (OK button is clicked).
+
+        This requires additional logic to have the table that showed this dialog
+        in the first place to reflect the new values, since the underlying
+        data model isn't "connected" to the library. It is the window's responsibility
+        to reflect the changes in the table's data, since only it knows how the
+        model is currently structured. This is achieved by emitting a songChanged
+        signal from the dialog, which is emitted again by SongView, which should be
+        connected to by the parent window.
         """
-        pass
-        # TODO: implement extended song info accept logic
-        # This requires additional logic to have the table that requested
-        # this in the first place to reflect the new values, since the underlying
-        # data model isn't "connected" to the library.
-        # 
-        # The "best" way is most likely to give this a signal, have a slot in 
-        # SongView, then have that emit its own signal with the song that's changed.
-        # Then, StandardSyncWindow/FirstTimeWindow can connect to that "song object
-        # changed in this specific table" signal and edit the table model itself from there.
-        #
-        # In other words, this means: 
-        # - a "song edited" signal in SongInfoDialog, passing out the libpytunes Song object
-        # - a "song edited" signal in SongView, passing out the same
-        # - a slot in the respective windows containing the SongView widgets
-        # - one function in the respective windows for each table, 
-        #   holding the logic for editing the underlying array data and telling
-        #   the SongView to update
+        # TODO: implement qt entry fields -> libpytunes song fields logic
+
+        self.songChanged.emit(self.song)
+
+        # Call super
+        super().accept()
+
 
 # endregion
 

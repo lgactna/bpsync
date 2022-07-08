@@ -16,12 +16,14 @@ from PySide6.QtGui import (QBrush, QColor, QConicalGradient, QCursor,
     QImage, QKeySequence, QLinearGradient, QPainter,
     QPalette, QPixmap, QRadialGradient, QTransform)
 from PySide6.QtWidgets import (QApplication, QHBoxLayout, QLabel, QPlainTextEdit,
-    QProgressBar, QSizePolicy, QVBoxLayout, QWidget)
+    QProgressBar, QPushButton, QSizePolicy, QVBoxLayout,
+    QWidget)
 
 class Ui_ProcessingProgress(object):
     def setupUi(self, ProcessingProgress):
         if not ProcessingProgress.objectName():
             ProcessingProgress.setObjectName(u"ProcessingProgress")
+        ProcessingProgress.setWindowModality(Qt.ApplicationModal)
         ProcessingProgress.resize(400, 300)
         self.verticalLayout = QVBoxLayout(ProcessingProgress)
         self.verticalLayout.setObjectName(u"verticalLayout")
@@ -56,6 +58,11 @@ class Ui_ProcessingProgress(object):
 
         self.verticalLayout.addWidget(self.log_box)
 
+        self.cancelButton = QPushButton(ProcessingProgress)
+        self.cancelButton.setObjectName(u"cancelButton")
+
+        self.verticalLayout.addWidget(self.cancelButton)
+
 
         self.retranslateUi(ProcessingProgress)
 
@@ -66,5 +73,6 @@ class Ui_ProcessingProgress(object):
         ProcessingProgress.setWindowTitle(QCoreApplication.translate("ProcessingProgress", u"Processing songs", None))
         self.song_label.setText(QCoreApplication.translate("ProcessingProgress", u"Seiryu - BLUE DRAGON", None))
         self.progress_label.setText(QCoreApplication.translate("ProcessingProgress", u"(0/727)", None))
+        self.cancelButton.setText(QCoreApplication.translate("ProcessingProgress", u"Cancel", None))
     # retranslateUi
 

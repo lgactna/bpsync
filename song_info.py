@@ -495,7 +495,6 @@ class Ui_SongInfoDialog(object):
 
         self.buttonBox = QDialogButtonBox(SongInfoDialog)
         self.buttonBox.setObjectName(u"buttonBox")
-        self.buttonBox.setEnabled(False)
         self.buttonBox.setOrientation(Qt.Horizontal)
         self.buttonBox.setStandardButtons(QDialogButtonBox.Cancel|QDialogButtonBox.Ok)
 

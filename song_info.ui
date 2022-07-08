@@ -36,13 +36,13 @@ QLineEdit:focus, QSpinBox:focus{
      <property name="minimumSize">
       <size>
        <width>0</width>
-       <height>30</height>
+       <height>40</height>
       </size>
      </property>
      <property name="maximumSize">
       <size>
        <width>16777215</width>
-       <height>30</height>
+       <height>40</height>
       </size>
      </property>
      <property name="styleSheet">
@@ -51,7 +51,7 @@ background:transparent
 }</string>
      </property>
      <property name="text">
-      <string>You can change certain fields here directly by clicking OK after making changes. Note that some changes may not persist in a produced MP3 or in iTunes. </string>
+      <string>You can change certain fields here directly by clicking OK after making changes. Note that some changes may not persist in a produced MP3 or in iTunes, and that these changes are memory-only; they won't immediately reflect in iTunes and are lost when the program is closed.</string>
      </property>
      <property name="wordWrap">
       <bool>true</bool>
@@ -652,9 +652,6 @@ background:transparent
    </item>
    <item>
     <widget class="QDialogButtonBox" name="buttonBox">
-     <property name="enabled">
-      <bool>false</bool>
-     </property>
      <property name="orientation">
       <enum>Qt::Horizontal</enum>
      </property>

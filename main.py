@@ -90,6 +90,7 @@ class FirstTimeWindow(QtWidgets.QWidget, Ui_FirstTimeWindow):
         self.table_widget.customContextMenuRequested.connect(lambda pos: self.table_widget.show_context_menu(pos, self.lib))
         self.table_widget.context_menu_enabled = True
         self.table_filter_lineedit.textChanged.connect(lambda text: self.table_widget.proxy.set_filter_text(text))
+        self.table_widget.songChanged.connect(self.update_song_in_table_widget)
 
         # Table
         # In order: column headers, starting data, checkbox columns, columns to filter on with lineedit
@@ -149,6 +150,37 @@ class FirstTimeWindow(QtWidgets.QWidget, Ui_FirstTimeWindow):
 
         # TODO: Calculate top-right statistics
 
+    def update_song_in_table_widget(self, song):
+        """
+        Called when a Song object in self.lib is modified by any means.
+
+        It is this window's responsibility to know how to handle the change
+        of a song object in the underlying library.
+        """
+        # Search for equivalent row in the underlying data
+        # Linear is good enough
+        data = self.table_widget.table_model.array_data
+        target_index = -1
+        for index, row in data:
+            if row[0] == song.track_id:
+                target_index = index
+                break
+
+        if target_row == -1:
+            logging.error(f"Tried looking up {song.track_id} in the model, but it wasn't there?")
+            return
+
+        # Generate a "fake" first_sync_array from the song
+        temp_lib = {song.track_id: song}
+        new_data = bpsynctools.first_sync_array_from_libpysongs(temp_lib)
+
+        # Update row in data
+        data[index] = new_data[0]
+
+        # Tell the model to update
+        # inefficient call?
+        self.table_widget.set_data(data)
+
     def start_processing(self):
         # Check if all necessary fields are (probably) filled out
         mp3_target_directory = self.mp3_path_lineedit.text()
@@ -185,6 +217,10 @@ class FirstTimeWindow(QtWidgets.QWidget, Ui_FirstTimeWindow):
         # BUG: This does not kill the thread even if the windows are closed
         song_worker = bpsyncwidgets.SongWorker(self.lib, selected_ids_processing, selected_ids_tracking, ignored_ids_tracking, mp3_target_directory, data_directory, bpstat_prefix)
         song_worker.signal_connection.songStartedProcessing.connect(lambda progress_val, song_string: progress_window.updateFields(progress_val, song_string))
+
+        # Cancel thread availability
+        progress_window.logger_connection.canceled.connect(lambda: song_worker.stop_thread())
+
         self.thread_manager.start(song_worker)
 
         progress_window.show()
@@ -420,6 +456,10 @@ class StandardSyncWindow(QtWidgets.QWidget, Ui_StandardSyncWindow):
                                                     mp3_target_directory, data_directory, bpstat_prefix, backup_directory, backup_paths,
                                                     self.songs_changed_table.table_model.array_data)
         song_worker.signal_connection.songStartedProcessing.connect(lambda progress_val, song_string: progress_window.updateFields(progress_val, song_string))
+
+        # Cancel thread availability
+        progress_window.logger_connection.canceled.connect(lambda: song_worker.stop_thread())
+
         self.thread_manager.start(song_worker)
 
 class IgnoredSongsDialog(QtWidgets.QDialog, Ui_IgnoredSongsDialog):
