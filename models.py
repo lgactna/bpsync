@@ -87,6 +87,50 @@ class StoredSong(Base):
         delta = self.get_delta(xml_pc, bpstat_pc)
         self.last_playcount += delta
 
+    def update_from_libpy_song(self, libpysong, update_playcount):
+        """
+        Update a StoredSong to reflect the contents of a libpytunes Song object.
+
+        :param self: A StoredSong() instance.
+        :param libpysong: A libpytunes Song object with the data to copy over.
+        """
+        self.persistent_id = libpysong.persistent_id
+        
+        self.last_playcount = libpysong.play_count if libpysong.play_count else 0
+
+        self.blake2b_hash = calculate_file_hash(libpysong.location)
+
+        # The rest are all nullable, so None is ok to assign
+        # It's also valid to be comparing null/None, since a change
+        # from None to any value indicates that a value was
+        # added that wasn't present before
+        self.start_time = libpysong.start_time
+        self.stop_time = libpysong.stop_time
+        self.disc_number = libpysong.disc_number
+        self.disc_count = libpysong.disc_count
+        self.track_number = libpysong.track_number
+        self.track_count = libpysong.track_count
+        self.year = libpysong.year
+        self.bit_rate = libpysong.bit_rate
+        self.sample_rate = libpysong.sample_rate
+        self.volume_adjustment = libpysong.volume_adjustment
+        self.compilation = libpysong.compilation
+        self.track_type = libpysong.track_type
+        self.name = libpysong.name
+        self.artist = libpysong.artist
+        self.album_artist = libpysong.album_artist
+        self.composer = libpysong.composer
+        self.album = libpysong.album
+        self.grouping = libpysong.grouping
+        self.genre = libpysong.genre
+        self.kind = libpysong.kind
+        self.equalizer = libpysong.equalizer
+        self.sort_album = libpysong.sort_album
+        self.work = libpysong.work
+        self.movement_name = libpysong.movement_name
+        self.movement_number = libpysong.movement_number
+        self.movement_count = libpysong.movement_count
+
     def needs_reprocessing(self, libpysong):
         """
         Takes in a libpysong and checks if the relevant fields are equal.
@@ -179,41 +223,7 @@ def add_libpy_songs(songs):
     for song in songs:
         new_song = StoredSong()
 
-        new_song.persistent_id = song.persistent_id
-        new_song.last_playcount = song.play_count if song.play_count else 0
-
-        new_song.blake2b_hash = calculate_file_hash(song.location)
-
-        # The rest are all nullable, so None is ok to assign
-        # It's also valid to be comparing null/None, since a change
-        # from None to any value indicates that a value was
-        # added that wasn't present before
-        new_song.start_time = song.start_time
-        new_song.stop_time = song.stop_time
-        new_song.disc_number = song.disc_number
-        new_song.disc_count = song.disc_count
-        new_song.track_number = song.track_number
-        new_song.track_count = song.track_count
-        new_song.year = song.year
-        new_song.bit_rate = song.bit_rate
-        new_song.sample_rate = song.sample_rate
-        new_song.volume_adjustment = song.volume_adjustment
-        new_song.compilation = song.compilation
-        new_song.track_type = song.track_type
-        new_song.name = song.name
-        new_song.artist = song.artist
-        new_song.album_artist = song.album_artist
-        new_song.composer = song.composer
-        new_song.album = song.album
-        new_song.grouping = song.grouping
-        new_song.genre = song.genre
-        new_song.kind = song.kind
-        new_song.equalizer = song.equalizer
-        new_song.sort_album = song.sort_album
-        new_song.work = song.work
-        new_song.movement_name = song.movement_name
-        new_song.movement_number = song.movement_number
-        new_song.movement_count = song.movement_count
+        new_song.update_from_libpy_song(song)
 
         new_songs.append(new_song)
 

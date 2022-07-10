@@ -268,8 +268,14 @@ class SongTableModel(QAbstractTableModel):
         return None
 
     def setData(self, index, value, role=Qt.EditRole):
+        # Note: index must be relative to the source model, not the proxy model!
         if role == Qt.EditRole and int(index.flags() & QtCore.Qt.ItemIsEditable) > 0:
             self.array_data[index.row()][index.column()] = value
+
+            # https://doc.qt.io/qt-6/qabstractitemmodel.html#dataChanged
+            # dataChanged normally takes a top-left index, bottom-right index, and a list of flags
+            # But since we're only editing one specific cell at a time, the index is the same
+            # Any users of dataChanged can safely use just the first index
             self.dataChanged.emit(index, index, ())
             return True
         else:
@@ -717,7 +723,10 @@ class StandardWorker(SongWorker):
                 # update library entry and database
                 # note that the library entry already includes the extra xml plays, so we just do last_playcount+delta
                 self.lib.songs[track_id].play_count = db_song.last_playcount + delta
-                db_song.last_playcount += delta
+                
+                # at this point, we can use the library entry to update everything
+                # since the delta is already reflected in the libpytunes song
+                db_song.update_from_libpy_song(self.lib.songs[track_id])
 
                 # write out to bpstat
                 bpsynctools.add_to_bpstat(self.lib.songs[track_id], self.bpstat_prefix, self.bpstat_path)
