@@ -882,19 +882,19 @@ class SongInfoDialog(QtWidgets.QDialog, Ui_SongInfoDialog):
         if song.disc_number:
             self.discNumberSpinBox.setValue(song.disc_number)
         else:
-            self.discNumberSpinBox.setSpecialValueText("")
+            self.discNumberSpinBox.setSpecialValueText("(not set)")
         if song.disc_count:
             self.discCountSpinBox.setValue(song.disc_count)
         else:
-            self.discCountSpinBox.setSpecialValueText("")
+            self.discCountSpinBox.setSpecialValueText("(not set)")
         if song.track_number:
             self.trackNumberSpinBox.setValue(song.track_number)
         else:
-            self.trackNumberSpinBox.setSpecialValueText("")
+            self.trackNumberSpinBox.setSpecialValueText("(not set)")
         if song.track_count:
             self.trackCountSpinBox.setValue(song.track_count)
         else:
-            self.trackCountSpinBox.setSpecialValueText("")
+            self.trackCountSpinBox.setSpecialValueText("(not set)")
         self.ratingComputedCheckBox.setChecked(song.rating_computed if song.rating_computed else False)
         self.compilationCheckBox.setChecked(song.compilation if song.compilation else False)
 
@@ -918,17 +918,23 @@ class SongInfoDialog(QtWidgets.QDialog, Ui_SongInfoDialog):
         if song.album_rating:
             self.albumRatingSpinBox.setValue(song.album_rating)
         else:
-            self.albumRatingSpinBox.setSpecialValueText("")
+            self.albumRatingSpinBox.setSpecialValueText("(not set)")
         self.lovedCheckBox.setChecked(song.loved if song.loved else False)
         self.dislikedCheckBox.setChecked(song.disliked if song.disliked else False)
     
     def update_album_art(self):
         # Get location of song (which is guaranteed to exist, probably)
         # Load its data via eyed3
-        audio_file = eyed3.load(self.song.location)
+        try:
+            audio_file = eyed3.load(self.song.location)
+        except IOError:
+            # the file couldn't be found; at this point, just keep the label as-is
+            self.songImageLabel.setText("File not found")
+            return
 
         if len(audio_file.tag.images) == 0:
             logging.warning(f"Audio file at {self.song.location} has no image baked-in.")
+            self.songImageLabel.setText("No image available")
             return
         elif len(audio_file.tag.images) > 1:
             logging.info(f"Audio file at {self.song.location} appears to have more than one image embedded, showing the first one.")
@@ -956,7 +962,37 @@ class SongInfoDialog(QtWidgets.QDialog, Ui_SongInfoDialog):
         signal from the dialog, which is emitted again by SongView, which should be
         connected to by the parent window.
         """
-        # TODO: implement qt entry fields -> libpytunes song fields logic
+        # Refuse to do anything if the title or artist is empty, which is not allowed
+        if not self.titleLineEdit.text() or not self.artistLineEdit.text():
+            bpsynctools.show_error_window("Title and artist cannot be empty.", "", "Save error")
+            return
+
+        # there is likely a better way to do this, especially in Qt, but I'm not quite
+        # sure what that would look like (without just subclassing/overloading everything)
+        self.song.name = self.titleLineEdit.text()
+        self.song.artist = self.artistLineEdit.text()
+        self.song.album = self.albumLineEdit.text()
+        self.song.year = self.yearSpinBox.value()
+        self.song.genre = self.genreLineEdit.text()
+
+        self.song.start_time = self.startTimeSpinBox.value() if not self.startTimeSpinBox.specialValueText() else None
+        self.song.stop_time = self.stopTimeSpinBox.value() if not self.stopTimeSpinBox.specialValueText() else None
+        self.song.disc_number = self.discNumberSpinBox.value() if not self.discNumberSpinBox.specialValueText() else None
+        self.song.disc_count = self.discCountSpinBox.value() if not self.discCountSpinBox.specialValueText() else None
+        self.song.track_number = self.trackNumberSpinBox.value() if not self.trackNumberSpinBox.specialValueText() else None
+        self.song.track_count = self.trackCountSpinBox.value() if not self.trackCountSpinBox.specialValueText() else None
+
+        self.song.volume_adjustment = self.volumeAdjustmentSpinBox.value() if self.volumeAdjustmentSpinBox.value() else None
+        self.song.play_count = self.playCountSpinBox.value() if self.playCountSpinBox.value() else None
+        self.song.last_played = self.lastPlayedDateTimeEdit.dateTime().toPython() if not self.lastPlayedDateTimeEdit.specialValueText() else None
+        self.song.skip_count = self.skipCountSpinBox.value() if self.skipCountSpinBox.value() else None
+        self.song.skip_date = self.lastSkippedDateTimeEdit.dateTime().toPython() if not self.lastPlayedDateTimeEdit.specialValueText() else None
+        self.song.albumRating = self.albumRatingSpinBox.value() if not self.albumRatingSpinBox.specialValueText() else None
+
+        self.song.rating_computed = self.ratingComputedCheckBox.isChecked() if self.ratingComputedCheckBox.isChecked() else None
+        self.song.compilation = self.compilationCheckBox.isChecked() if self.compilationCheckBox.isChecked() else None
+        self.song.loved = self.lovedCheckBox.isChecked() if self.lovedCheckBox.isChecked() else None
+        self.song.disliked = self.dislikedCheckBox.isChecked() if self.dislikedCheckBox.isChecked() else None
 
         self.songChanged.emit(self.song)
 

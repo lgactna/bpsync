@@ -11,6 +11,7 @@ from math import log10
 from pathlib import Path
 import logging
 import hashlib
+from PySide6 import QtWidgets
 
 from pydub import AudioSegment
 from pydub.utils import mediainfo
@@ -209,8 +210,8 @@ def standard_sync_arrays_from_data(library, bpstat_songs):
             - Add a checkbox in the "Reprocess" column.
     - Call first_sync_array_from_libpysongs() to create the second table's rows.
     """
-    # to make db_songs, the engine must already have been initialized
-    # therefore it's safe to assume a session can be created
+    # this function can only possibly be called after the database has been initialized
+    # TODO: safety check to ensure the database actually has been initialized
     session = models.Session() 
 
     # create dict for bpstat songs, by persistent id
@@ -309,5 +310,17 @@ def humanbytes(B):
         return '{0:.2f} GB'.format(B / GB)
     elif TB <= B:
         return '{0:.2f} TB'.format(B / TB)
+
+# endregion
+
+# region UI
+
+def show_error_window(text, informative_text, title):
+    msg = QtWidgets.QMessageBox()
+    msg.setIcon(QtWidgets.QMessageBox.Critical)
+    msg.setText(text)
+    msg.setInformativeText(informative_text)
+    msg.setWindowTitle(title)
+    msg.exec()
 
 # endregion

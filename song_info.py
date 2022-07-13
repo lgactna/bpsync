@@ -25,7 +25,7 @@ class Ui_SongInfoDialog(object):
     def setupUi(self, SongInfoDialog):
         if not SongInfoDialog.objectName():
             SongInfoDialog.setObjectName(u"SongInfoDialog")
-        SongInfoDialog.resize(669, 466)
+        SongInfoDialog.resize(669, 467)
         SongInfoDialog.setStyleSheet(u"QLineEdit, QSpinBox{\n"
 "	background:transparent;\n"
 "	border:transparent;\n"
@@ -44,8 +44,8 @@ class Ui_SongInfoDialog(object):
         sizePolicy.setVerticalStretch(0)
         sizePolicy.setHeightForWidth(self.label_19.sizePolicy().hasHeightForWidth())
         self.label_19.setSizePolicy(sizePolicy)
-        self.label_19.setMinimumSize(QSize(0, 30))
-        self.label_19.setMaximumSize(QSize(16777215, 30))
+        self.label_19.setMinimumSize(QSize(0, 50))
+        self.label_19.setMaximumSize(QSize(16777215, 50))
         self.label_19.setStyleSheet(u"QTextEdit{\n"
 "background:transparent\n"
 "}")
@@ -66,6 +66,7 @@ class Ui_SongInfoDialog(object):
         self.songImageLabel.setSizePolicy(sizePolicy1)
         self.songImageLabel.setMinimumSize(QSize(160, 160))
         self.songImageLabel.setMaximumSize(QSize(160, 160))
+        self.songImageLabel.setAlignment(Qt.AlignCenter)
 
         self.verticalLayout_3.addWidget(self.songImageLabel)
 
@@ -493,12 +494,26 @@ class Ui_SongInfoDialog(object):
 
         self.verticalLayout_4.addLayout(self.horizontalLayout_2)
 
+        self.horizontalLayout_3 = QHBoxLayout()
+        self.horizontalLayout_3.setObjectName(u"horizontalLayout_3")
+        self.label = QLabel(SongInfoDialog)
+        self.label.setObjectName(u"label")
+        font1 = QFont()
+        font1.setBold(False)
+        self.label.setFont(font1)
+        self.label.setStyleSheet(u"color:red")
+
+        self.horizontalLayout_3.addWidget(self.label)
+
         self.buttonBox = QDialogButtonBox(SongInfoDialog)
         self.buttonBox.setObjectName(u"buttonBox")
         self.buttonBox.setOrientation(Qt.Horizontal)
         self.buttonBox.setStandardButtons(QDialogButtonBox.Cancel|QDialogButtonBox.Ok)
 
-        self.verticalLayout_4.addWidget(self.buttonBox)
+        self.horizontalLayout_3.addWidget(self.buttonBox)
+
+
+        self.verticalLayout_4.addLayout(self.horizontalLayout_3)
 
 
         self.retranslateUi(SongInfoDialog)
@@ -510,8 +525,8 @@ class Ui_SongInfoDialog(object):
 
     def retranslateUi(self, SongInfoDialog):
         SongInfoDialog.setWindowTitle(QCoreApplication.translate("SongInfoDialog", u"Song information: {song.name} - {song.artist}", None))
-        self.label_19.setText(QCoreApplication.translate("SongInfoDialog", u"You can change certain fields here directly by clicking OK after making changes. Note that some changes may not persist in a produced MP3 or in iTunes. ", None))
-        self.songImageLabel.setText("")
+        self.label_19.setText(QCoreApplication.translate("SongInfoDialog", u"You can change certain fields here directly by clicking OK after making changes. Note that some changes may not persist in a produced MP3 or in iTunes, and that these changes are memory-only; they won't immediately reflect in iTunes and are lost when the program is closed.", None))
+        self.songImageLabel.setText(QCoreApplication.translate("SongInfoDialog", u"No image available", None))
         self.pushButton.setText(QCoreApplication.translate("SongInfoDialog", u"Change image", None))
         self.titleLabel.setText(QCoreApplication.translate("SongInfoDialog", u"Title", None))
 #if QT_CONFIG(whatsthis)
@@ -541,8 +556,8 @@ class Ui_SongInfoDialog(object):
         self.bitrateLabel.setText(QCoreApplication.translate("SongInfoDialog", u"TextLabel", None))
         self.sampleRateLabel.setText(QCoreApplication.translate("SongInfoDialog", u"TextLabel", None))
         self.label_8.setText(QCoreApplication.translate("SongInfoDialog", u"Sample rate", None))
-        self.startTimeLabel.setText(QCoreApplication.translate("SongInfoDialog", u"Start time", None))
-        self.stopTimeLabel.setText(QCoreApplication.translate("SongInfoDialog", u"Stop time", None))
+        self.startTimeLabel.setText(QCoreApplication.translate("SongInfoDialog", u"Start time (msec)", None))
+        self.stopTimeLabel.setText(QCoreApplication.translate("SongInfoDialog", u"Stop time (msec)", None))
         self.discNumberLabel.setText(QCoreApplication.translate("SongInfoDialog", u"Disc number", None))
         self.discCountLabel.setText(QCoreApplication.translate("SongInfoDialog", u"Disc count", None))
         self.trackNumberLabel.setText(QCoreApplication.translate("SongInfoDialog", u"Track number", None))
@@ -569,5 +584,6 @@ class Ui_SongInfoDialog(object):
         self.albumRatingLabel.setText(QCoreApplication.translate("SongInfoDialog", u"Album rating", None))
         self.lovedLabel.setText(QCoreApplication.translate("SongInfoDialog", u"Loved", None))
         self.dislikedLabel.setText(QCoreApplication.translate("SongInfoDialog", u"Disliked", None))
+        self.label.setText(QCoreApplication.translate("SongInfoDialog", u"Excluding volume adjustment, all changes only reflect in the XML!", None))
     # retranslateUi
 

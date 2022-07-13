@@ -28,13 +28,7 @@ from ignored_songs import Ui_IgnoredSongsDialog
 from progress import Ui_ProcessingProgress
 from PySide6 import QtWidgets, QtCore, QtGui
 
-def show_error_window(text, informative_text, title):
-    msg = QtWidgets.QMessageBox()
-    msg.setIcon(QtWidgets.QMessageBox.Critical)
-    msg.setText(text)
-    msg.setInformativeText(informative_text)
-    msg.setWindowTitle(title)
-    msg.exec()
+
 
 class MainMenuWindow(QtWidgets.QWidget, Ui_MainMenuWindow):
     def __init__(self):
@@ -127,7 +121,7 @@ class FirstTimeWindow(QtWidgets.QWidget, Ui_FirstTimeWindow):
         # get contents of lineedit
         xml_path = self.xml_path_lineedit.text()
         if not xml_path:
-            show_error_window("Please enter an XML path!",
+            bpsynctools.show_error_window("Please enter an XML path!",
                               "You can do this by manually entering the path or selecting it by clicking Browse.",
                               "No XML path defined")
             return
@@ -135,12 +129,12 @@ class FirstTimeWindow(QtWidgets.QWidget, Ui_FirstTimeWindow):
         try:
             self.lib = Library(xml_path)
         except xml.parsers.expat.ExpatError as e:
-            show_error_window("Invalid XML file!",
+            bpsynctools.show_error_window("Invalid XML file!",
                               f"Couldn't parse XML file (if it is one) - {e}",
                               "Invalid XML file")
             return
         except FileNotFoundError:
-            show_error_window("File not found!",
+            bpsynctools.show_error_window("File not found!",
                               "The entered path doesn't appear to exist.",
                               "Invalid XML filepath")
             return
@@ -149,6 +143,16 @@ class FirstTimeWindow(QtWidgets.QWidget, Ui_FirstTimeWindow):
         self.table_widget.set_data(data)
 
         # TODO: Calculate top-right statistics
+        # There's two parts to this: calculating the inital set of statistics, probably in a separate function,
+        # and maintaing the state of the statistics. The simplest way is to connect to each underlying
+        # table model's dataChanged signal, then get its row value and use that directly against
+        # the table model's data() function (or construct a new index with column 0, the track ID).
+        # This does require many calls when a checkbox header is clicked, but this isn't that high of an
+        # overhead.
+        #
+        # Also, check to make sure that the newly-updated index is in the "processing" column, 
+        # otherwise there's no need to update (unless we're also keeping track of the number of 
+        # tracked songs).
 
     def update_song_in_table_widget(self, song):
         """
@@ -157,16 +161,22 @@ class FirstTimeWindow(QtWidgets.QWidget, Ui_FirstTimeWindow):
         It is this window's responsibility to know how to handle the change
         of a song object in the underlying library.
         """
+        # TODO: does this make more sense as a callback-based function in SongView?
+        # honestly, it may make more sense to inherit SongView and just have a "new songs"
+        # subclass of SongView and a "updated songs" subclass. on the other hand, this gives us
+        # a little more control over the logic if something does need to happen
+        # in one table that doesn't happen in the other
+
         # Search for equivalent row in the underlying data
         # Linear is good enough
         data = self.table_widget.table_model.array_data
         target_index = -1
-        for index, row in data:
+        for index, row in enumerate(data):
             if row[0] == song.track_id:
                 target_index = index
                 break
 
-        if target_row == -1:
+        if target_index == -1:
             logging.error(f"Tried looking up {song.track_id} in the model, but it wasn't there?")
             return
 
@@ -175,7 +185,7 @@ class FirstTimeWindow(QtWidgets.QWidget, Ui_FirstTimeWindow):
         new_data = bpsynctools.first_sync_array_from_libpysongs(temp_lib)
 
         # Update row in data
-        data[index] = new_data[0]
+        data[target_index] = new_data[0]
 
         # Tell the model to update
         # inefficient call?
@@ -188,7 +198,7 @@ class FirstTimeWindow(QtWidgets.QWidget, Ui_FirstTimeWindow):
         bpstat_prefix = self.bpstat_path_lineedit.text()
 
         if not(mp3_target_directory and data_directory and bpstat_prefix and self.lib):
-            show_error_window("Missing required fields!",
+            bpsynctools.show_error_window("Missing required fields!",
                               "Please make sure you've loaded an XML and set everything under Options.",
                               "Required fields missing")
             return
@@ -234,6 +244,7 @@ class StandardSyncWindow(QtWidgets.QWidget, Ui_StandardSyncWindow):
         self.program_path = QtCore.QDir.currentPath()
         self.lib = None  # libpytunes Library object
         self.db_songs = None  # Array of StoredSong objects from querying database
+        self.bpsongs = None # Array of BPSong objects.
         self.thread_manager = QtCore.QThreadPool()
 
         self.db_initialized = False  # Whether or not the database file has been loaded
@@ -265,6 +276,9 @@ class StandardSyncWindow(QtWidgets.QWidget, Ui_StandardSyncWindow):
         self.new_songs_table.customContextMenuRequested.connect(
             lambda pos: self.new_songs_table.show_context_menu(pos, self.lib))
         self.new_songs_table.context_menu_enabled = True
+        self.songs_changed_table.songChanged.connect(self.update_song_in_songs_changed_table)
+        self.new_songs_table.songChanged.connect(self.update_song_in_new_songs_table)
+
         self.songs_changed_lineedit.textChanged.connect(lambda text: self.songs_changed_table.proxy.set_filter_text(text))
         self.new_songs_lineedit.textChanged.connect(lambda text: self.new_songs_table.proxy.set_filter_text(text))
 
@@ -294,7 +308,7 @@ class StandardSyncWindow(QtWidgets.QWidget, Ui_StandardSyncWindow):
     def open_ignored_songs_dialog(self):
         # whose responsibility is it to keep track of this?
         if not self.db_initialized:
-            show_error_window("Database not available!", 
+            bpsynctools.show_error_window("Database not available!", 
                               "Have you loaded in a .db file yet?",
                               "Database not available!")
             return
@@ -303,7 +317,7 @@ class StandardSyncWindow(QtWidgets.QWidget, Ui_StandardSyncWindow):
             ignored_songs = session.query(models.IgnoredSong).all()
 
         if not ignored_songs:
-            show_error_window("No ignored songs found!",
+            bpsynctools.show_error_window("No ignored songs found!",
                               "There were no ignored songs in the database file. Ignored songs only appear if you explicitly choose not to track a song in your library.",
                               "No ignored songs found!")
             return
@@ -354,7 +368,7 @@ class StandardSyncWindow(QtWidgets.QWidget, Ui_StandardSyncWindow):
         database_path = self.database_path_lineedit.text()
 
         if not xml_path or not bpstat_path or not database_path:
-            show_error_window("Please make sure you've entered all paths!",
+            bpsynctools.show_error_window("Please make sure you've entered all paths!",
                               "You can do this by manually entering the path or selecting each path by clicking Browse.",
                               "Paths not defined")
             return
@@ -365,12 +379,12 @@ class StandardSyncWindow(QtWidgets.QWidget, Ui_StandardSyncWindow):
         try:
             self.lib = Library(xml_path)
         except xml.parsers.expat.ExpatError as e:
-            show_error_window("Invalid XML file!",
+            bpsynctools.show_error_window("Invalid XML file!",
                                 f"Couldn't parse XML file (if it is one) - {e}",
                                 "Invalid XML file")
             return
         except FileNotFoundError:
-            show_error_window("File not found!",
+            bpsynctools.show_error_window("File not found!",
                                 "The entered path doesn't appear to exist.",
                                 "Invalid XML filepath")
             return
@@ -378,7 +392,7 @@ class StandardSyncWindow(QtWidgets.QWidget, Ui_StandardSyncWindow):
         ## try generating bpstat library
         self.bpsongs = bpparse.get_songs(bpstat_path)
         if not self.bpsongs:
-            show_error_window(".bpstat malformed!",
+            bpsynctools.show_error_window(".bpstat malformed!",
                                 "The program wasn't able to find any valid songs in this file.",
                                 "Invalid .bpstat file")
             return
@@ -387,14 +401,14 @@ class StandardSyncWindow(QtWidgets.QWidget, Ui_StandardSyncWindow):
         try:
             models.initialize_engine(database_path)
         except Exception as e:
-            show_error_window("Something went wrong while connecting to the database!",
+            bpsynctools.show_error_window("Something went wrong while connecting to the database!",
                                str(e),
                                "Database error")
             return
         with models.Session() as session:
             self.db_songs = session.query(models.StoredSong).all()
         if not self.db_songs:
-            show_error_window("No songs in database!",
+            bpsynctools.show_error_window("No songs in database!",
                        "A database query yielded no results.",
                        "Database error")
             return
@@ -410,6 +424,68 @@ class StandardSyncWindow(QtWidgets.QWidget, Ui_StandardSyncWindow):
 
         # TODO: Calculate top-right statistics
 
+    def update_song_in_songs_changed_table(self, song):
+        """
+        Called when a Song object in self.lib is modified by any means.
+
+        It is this window's responsibility to know how to handle the change
+        of a song object in the underlying library.
+        """
+        # Search for equivalent row in the underlying data
+        # Linear is good enough
+        data = self.songs_changed_table.table_model.array_data
+        target_index = -1
+        for index, row in enumerate(data):
+            if row[0] == song.track_id:
+                target_index = index
+                break
+
+        if target_index == -1:
+            logging.error(f"Tried looking up {song.track_id} in the model, but it wasn't there?")
+            return
+
+        # Generate a "fake" first_sync_array from the song
+        temp_lib = {song.track_id: song}
+        new_data = bpsynctools.first_sync_array_from_libpysongs(temp_lib)
+
+        # Update row in data
+        data[target_index] = new_data[0]
+
+        # Tell the model to update
+        # inefficient call?
+        self.songs_changed_table.set_data(data)
+
+    def update_song_in_new_songs_table(self, song):
+        """
+        Called when a Song object in self.lib is modified by any means.
+
+        It is this window's responsibility to know how to handle the change
+        of a song object in the underlying library.
+        """
+        # Search for equivalent row in the underlying data
+        # Linear is good enough
+        data = self.new_songs_table.table_model.array_data
+        target_index = -1
+        for index, row in enumerate(data):
+            if row[0] == song.track_id:
+                target_index = index
+                break
+
+        if target_index == -1:
+            logging.error(f"Tried looking up {song.track_id} in the model, but it wasn't there?")
+            return
+
+        # Generate a "fake" first_sync_array from the song
+        temp_lib = {song.track_id: song}
+        _, new_data = bpsynctools.standard_sync_array_from_data(temp_lib, self.bpsongs)
+
+        # Update row in data
+        data[target_index] = new_data[0]
+
+        # Tell the model to update
+        # inefficient call?
+        self.new_songs_table.set_data(data)
+
     def start_processing(self):
         # Get all backup paths, store into array
         xml_path = self.xml_path_lineedit.text()
@@ -423,7 +499,7 @@ class StandardSyncWindow(QtWidgets.QWidget, Ui_StandardSyncWindow):
         backup_directory = self.backup_path_lineedit.text()
 
         if not(mp3_target_directory and data_directory and backup_directory and self.lib):
-            show_error_window("Missing required fields!",
+            bpsynctools.show_error_window("Missing required fields!",
                               "Please make sure you've loaded an XML and set everything under Options.",
                               "Required fields missing")
             return
