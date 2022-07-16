@@ -6,7 +6,6 @@ from pathlib import Path
 
 logger = logging.getLogger(__name__)
 
-
 class BPSong:
     """
     Represents an entry in a .bpstat file.
@@ -105,7 +104,7 @@ def get_songs(filepath):
             continue
         elif len(fields) < 8:
             # shouldn't ever happen unless the bpstat's been messed with, or an empty line was parsed
-            logging.error(f"Song has less than 8 fields?! ({entry=})")
+            logger.error(f"Song has less than 8 fields?! ({entry=})")
             continue
         song = BPSong(*fields)
         songs.append(song)

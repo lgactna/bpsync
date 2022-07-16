@@ -49,7 +49,7 @@ def copy_and_process_song(song, output_folder='tmp'):
 
     try:
         if file_extension != ".mp3" or song.start_time or song.stop_time or song.volume_adjustment:
-            logging.info(f"{song.persistent_id} needs to be processed by pydub ({output_path})")
+            logger.info(f"{song.persistent_id} needs to be processed by pydub ({output_path})")
             obj = AudioSegment.from_file(song.location)
 
             if song.start_time or song.stop_time:
@@ -58,27 +58,27 @@ def copy_and_process_song(song, output_folder='tmp'):
 
                 obj = obj[start_time:stop_time]
 
-                logging.info(f"Trimmed {song.persistent_id}")
+                logger.info(f"Trimmed {song.persistent_id}")
             
             if song.volume_adjustment:
                 # internally stored as an integer between -255 and 255
                 # but can physically be adjusted past 255
                 if song.volume_adjustment <= -255:
                     obj = obj - 100  # essentially silent
-                    logging.warning(f"The song {song.name} has a volume adjustment value less than -255 and is silent!")
+                    logger.warning(f"The song {song.name} has a volume adjustment value less than -255 and is silent!")
                 else:
                     gain_factor = (song.volume_adjustment + 255)/255
                     decibel_change = 10 * log10(gain_factor)
                     obj = obj + decibel_change
-                    logging.info(f"Changed {song.name} gain factor by {gain_factor} ({decibel_change} dB)")
+                    logger.info(f"Changed {song.name} gain factor by {gain_factor} ({decibel_change} dB)")
 
             # tags parameter is used for retaining metadata
             obj.export(output_path, format="mp3", tags=mediainfo(song.location)['TAG'])
         else:
-            logging.info(f"{song.persistent_id} does not need to be processed and was directly copied ({output_path})")
+            logger.info(f"{song.persistent_id} does not need to be processed and was directly copied ({output_path})")
             copy2(song.location, output_path)
     except FileNotFoundError as e:
-        logging.error(f"Couldn't find {song.location}")
+        logger.error(f"Couldn't find {song.location}")
     
     if check_for_semicolons(song):
         strip_semicolons(output_path)    
@@ -105,7 +105,7 @@ def check_for_semicolons(song):
 
     for field in [song.artist, song.name, song.album]:
         if field and ";" in field:
-            logging.warn(f"Semicolon detected in {song.name=} ({song.persistent_id=})! "
+            logger.warning(f"Semicolon detected in {song.name=} ({song.persistent_id=})! "
                          f"This can cause .bpstat imports to fail.")
             return True
     return False
@@ -133,11 +133,46 @@ def add_to_exportimport(song, exportimport_path):
     :param song: The StoredSong object to add.
     :param exportimport_path: The full location of the txt file to use.
     """
+    # Map of <tag> to libpysong attributes, used with getattr
+    attrs = {
+        "<Location>": "location",
+        "<DateAdded>": "date_added",
+        "<Name>": "name",
+        "<Album>": "album",
+        "<SortAlbum>": "sort_album",
+        "<AlbumArtist>": "album_artist",
+        "<Artist>": "artist",
+        "<Composer>": "composer",
+        "<Grouping>": "grouping",
+        "<Genre>": "genre",
+        "<Compilation>": "compilation",
+        "<DiscNumber>": "disc_number",
+        "<DiscCount>": "disc_count",
+        "<TrackNumber>": "track_number",
+        "<TrackCount>": "track_count",
+        "<Year>": "year",
+        "<Plays>": "play_count",
+        "<Played>": "lastplayed",
+        "<Skips>": "skip_count",
+        "<Skipped>": "skip_date",
+        "<Comment>": "comments",
+        "<BitRate>": "bit_rate",
+        "<KindAsString>": "kind",
+        "<BPM>": "bpm",
+        "<EQ>": "equalizer",
+        "<VA>": "volume_adjustment",
+        "<Start>": "start_time",
+        "<Finish>": "stop_time",
+    }
+
+    # todo: parsing function by type
+
 
     # This adds the BOM if needed
     with open(exportimport_path, "a", encoding="utf-16") as fp:
         fp.write(f"<ID>{song.persistent_id[0:8]}-{song.persistent_id[8:16]}\n")
-        fp.write(f"<Plays>{song.last_playcount}\n\n")
+        fp.write(f"<Plays>{song.last_playcount}\n")
+        fp.write("\n")
 
 # endregion
 
@@ -211,8 +246,11 @@ def standard_sync_arrays_from_data(library, bpstat_songs):
     - Call first_sync_array_from_libpysongs() to create the second table's rows.
     """
     # this function can only possibly be called after the database has been initialized
-    # TODO: safety check to ensure the database actually has been initialized
-    session = models.Session() 
+    if models.Session:
+        session = models.Session() 
+    else:
+        logger.error("Attempted call to make standard sync array when session hadn't been established yet.")
+        raise AssertionError()
 
     # create dict for bpstat songs, by persistent id
     bpsongs = {}
@@ -231,7 +269,7 @@ def standard_sync_arrays_from_data(library, bpstat_songs):
             if not stored_song:
                 raise KeyError()  # same behavior as bpstat_song throwing a KeyError upon no result found
         except sqlalchemy.orm.exc.MultipleResultsFound:
-            logging.error("Database has multiple entries of the same ID?")
+            logger.error("Database has multiple entries of the same ID?")
             continue
         except KeyError:
             # The song doesn't exist in the StoredSong or wasn't in the bpstat.

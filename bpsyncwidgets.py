@@ -22,6 +22,8 @@ import models
 from progress import Ui_ProcessingProgress
 from song_info import Ui_SongInfoDialog
 
+logger = logging.getLogger(__name__)
+
 # region SongView
 class CheckBoxDelegate(QtWidgets.QItemDelegate):
     """
@@ -56,7 +58,7 @@ class CheckBoxDelegate(QtWidgets.QItemDelegate):
         else:
             # Checkbox data should be [-1, 1], never anything else - this indicates
             # some data mismatching
-            logging.warning("Invalid index.data() in CheckboxDelegate.paint()??")
+            logger.warning("Invalid index.data() in CheckboxDelegate.paint()??")
 
     def editorEvent(self, event, model, option, index):
         """
@@ -572,7 +574,7 @@ class TestWorker(QtCore.QRunnable):
     #@QtCore.Slot()
     def run(self):
         for i in range(1000):
-            logging.warning("test")
+            logger.warning("test")
             self.signal_connection.songStartedProcessing.emit(i, f"Test song {i}")
             #self.signal.test_signal.emit(i, f"Test song {i}")
             time.sleep(0.1)
@@ -631,13 +633,13 @@ class SongWorker(QtCore.QRunnable):
         for index, track_id in enumerate(self.tracking_ids):
             # Check for thread stop
             if self.stop_flag:
-                logging.info("SongWorker thread was stopped during bpstat generation")
+                logger.info("SongWorker thread was stopped during bpstat generation")
                 self.signal_connection.songStartedProcessing.emit(index, f"Processing stopped - you can close this window.")
                 return
 
             song = self.lib.songs[track_id]
 
-            logging.info(f"Added {song.name} ({song.persistent_id}) to database for tracking ({index + 1}/{max_to_track})")
+            logger.info(f"Added {song.name} ({song.persistent_id}) to database for tracking ({index + 1}/{max_to_track})")
 
             bpsynctools.add_to_bpstat(song, self.bpstat_prefix, self.bpstat_path)
             song_arr.append(song)
@@ -645,13 +647,13 @@ class SongWorker(QtCore.QRunnable):
         for index, track_id in enumerate(self.processing_ids):
             # Check for thread stop
             if self.stop_flag:
-                logging.info("SongWorker thread was stopped during song processing")
+                logger.info("SongWorker thread was stopped during song processing")
                 self.signal_connection.songStartedProcessing.emit(index, f"Processing stopped - you can close this window.")
                 return
 
             song = self.lib.songs[track_id]
 
-            logging.info(f"Processing {song.name} ({song.persistent_id})")
+            logger.info(f"Processing {song.name} ({song.persistent_id})")
             self.signal_connection.songStartedProcessing.emit(index + 1, f"{song.artist} - {song.name}")
 
             bpsynctools.copy_and_process_song(song)
@@ -807,7 +809,7 @@ class ProgressWindow(logging.Handler, QtWidgets.QWidget, Ui_ProcessingProgress):
         event.accept()
     
     def cancel_event(self):
-        logging.info("Cancellation of processing requested")
+        logger.info("Cancellation of processing requested")
         self.logger_connection.emit_cancel()
         self.cancelButton.setDisabled(True)
 
@@ -933,11 +935,11 @@ class SongInfoDialog(QtWidgets.QDialog, Ui_SongInfoDialog):
             return
 
         if len(audio_file.tag.images) == 0:
-            logging.warning(f"Audio file at {self.song.location} has no image baked-in.")
+            logger.warning(f"Audio file at {self.song.location} has no image baked-in.")
             self.songImageLabel.setText("No image available")
             return
         elif len(audio_file.tag.images) > 1:
-            logging.info(f"Audio file at {self.song.location} appears to have more than one image embedded, showing the first one.")
+            logger.info(f"Audio file at {self.song.location} appears to have more than one image embedded, showing the first one.")
 
         image = audio_file.tag.images[0]
         image_data = image.image_data

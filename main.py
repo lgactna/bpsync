@@ -12,7 +12,13 @@ import bpsyncwidgets
 import bpparse
 import models
 
+logging.basicConfig(filename='bpsync.log', 
+                    encoding='utf-8', 
+                    level=logging.DEBUG,
+                    format='%(filename)s:%(lineno)d | %(asctime)s | [%(levelname)s] - %(message)s',
+                    datefmt='%Y-%m-%d %H:%M:%S')
 logger = logging.getLogger(__name__)
+logger.addHandler(logging.StreamHandler(sys.stdout))
 
 # dev constants - not used in program
 LIBRARY = 'iTunes_Music_Library.xml'
@@ -177,7 +183,7 @@ class FirstTimeWindow(QtWidgets.QWidget, Ui_FirstTimeWindow):
                 break
 
         if target_index == -1:
-            logging.error(f"Tried looking up {song.track_id} in the model, but it wasn't there?")
+            logger.error(f"Tried looking up {song.track_id} in the model, but it wasn't there?")
             return
 
         # Generate a "fake" first_sync_array from the song
@@ -441,7 +447,7 @@ class StandardSyncWindow(QtWidgets.QWidget, Ui_StandardSyncWindow):
                 break
 
         if target_index == -1:
-            logging.error(f"Tried looking up {song.track_id} in the model, but it wasn't there?")
+            logger.error(f"Tried looking up {song.track_id} in the model, but it wasn't there?")
             return
 
         # Generate a "fake" first_sync_array from the song
@@ -472,7 +478,7 @@ class StandardSyncWindow(QtWidgets.QWidget, Ui_StandardSyncWindow):
                 break
 
         if target_index == -1:
-            logging.error(f"Tried looking up {song.track_id} in the model, but it wasn't there?")
+            logger.error(f"Tried looking up {song.track_id} in the model, but it wasn't there?")
             return
 
         # Generate a "fake" first_sync_array from the song
@@ -573,7 +579,7 @@ class IgnoredSongsDialog(QtWidgets.QDialog, Ui_IgnoredSongsDialog):
             try:
                 song = libsongs[ignored_song.persistent_id]
             except KeyError:
-                logging.info(f"Failed to look up {ignored_song.persistent_id} when building the IgnoredSongsDialog table, was it deleted?")
+                logger.info(f"Failed to look up {ignored_song.persistent_id} when building the IgnoredSongsDialog table, was it deleted?")
                 continue
 
             # Check if it is already in the new songs table (which is, unfortunately, a linear search)
