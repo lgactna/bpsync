@@ -1,0 +1,714 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<ui version="4.0">
+ <class>ExportImportWindow</class>
+ <widget class="QWidget" name="ExportImportWindow">
+  <property name="geometry">
+   <rect>
+    <x>0</x>
+    <y>0</y>
+    <width>727</width>
+    <height>365</height>
+   </rect>
+  </property>
+  <property name="sizePolicy">
+   <sizepolicy hsizetype="Fixed" vsizetype="Fixed">
+    <horstretch>0</horstretch>
+    <verstretch>0</verstretch>
+   </sizepolicy>
+  </property>
+  <property name="minimumSize">
+   <size>
+    <width>727</width>
+    <height>365</height>
+   </size>
+  </property>
+  <property name="maximumSize">
+   <size>
+    <width>727</width>
+    <height>365</height>
+   </size>
+  </property>
+  <property name="windowTitle">
+   <string>XML to ExportImport</string>
+  </property>
+  <layout class="QVBoxLayout" name="verticalLayout">
+   <item>
+    <widget class="QLabel" name="label_2">
+     <property name="maximumSize">
+      <size>
+       <width>16777215</width>
+       <height>20</height>
+      </size>
+     </property>
+     <property name="text">
+      <string>When a selected field is not present for a song in the XML, it is not included in the resulting ExportImport file.</string>
+     </property>
+     <property name="wordWrap">
+      <bool>true</bool>
+     </property>
+    </widget>
+   </item>
+   <item>
+    <widget class="QLabel" name="label_3">
+     <property name="maximumSize">
+      <size>
+       <width>16777215</width>
+       <height>20</height>
+      </size>
+     </property>
+     <property name="text">
+      <string>Disabled fields are shown for reference - they are not available in the XML and can never be exported.</string>
+     </property>
+     <property name="wordWrap">
+      <bool>true</bool>
+     </property>
+    </widget>
+   </item>
+   <item>
+    <layout class="QHBoxLayout" name="horizontalLayout">
+     <property name="topMargin">
+      <number>0</number>
+     </property>
+     <item>
+      <widget class="QLabel" name="label">
+       <property name="text">
+        <string>XML filepath</string>
+       </property>
+      </widget>
+     </item>
+     <item>
+      <widget class="QLineEdit" name="xml_path_lineedit"/>
+     </item>
+     <item>
+      <widget class="QPushButton" name="xml_browse_button">
+       <property name="text">
+        <string>Browse</string>
+       </property>
+      </widget>
+     </item>
+     <item>
+      <widget class="QPushButton" name="xml_load_button">
+       <property name="text">
+        <string>Load</string>
+       </property>
+      </widget>
+     </item>
+    </layout>
+   </item>
+   <item>
+    <widget class="QLabel" name="songsLoadedLabel">
+     <property name="maximumSize">
+      <size>
+       <width>16777215</width>
+       <height>20</height>
+      </size>
+     </property>
+     <property name="font">
+      <font>
+       <weight>75</weight>
+       <bold>true</bold>
+      </font>
+     </property>
+     <property name="text">
+      <string>No XML file loaded</string>
+     </property>
+     <property name="alignment">
+      <set>Qt::AlignCenter</set>
+     </property>
+    </widget>
+   </item>
+   <item>
+    <layout class="QHBoxLayout" name="horizontalLayout_2">
+     <item>
+      <layout class="QFormLayout" name="formLayout_11">
+       <item row="0" column="0">
+        <widget class="QLabel" name="locationLabel">
+         <property name="text">
+          <string>Location</string>
+         </property>
+        </widget>
+       </item>
+       <item row="0" column="1">
+        <widget class="QCheckBox" name="locationCheckBox"/>
+       </item>
+       <item row="1" column="0">
+        <widget class="QLabel" name="dateAddedLabel">
+         <property name="text">
+          <string>DateAdded</string>
+         </property>
+        </widget>
+       </item>
+       <item row="1" column="1">
+        <widget class="QCheckBox" name="dateAddedCheckBox"/>
+       </item>
+       <item row="2" column="0">
+        <widget class="QLabel" name="nameLabel">
+         <property name="text">
+          <string>Name</string>
+         </property>
+        </widget>
+       </item>
+       <item row="2" column="1">
+        <widget class="QCheckBox" name="nameCheckBox"/>
+       </item>
+       <item row="3" column="0">
+        <widget class="QLabel" name="sortNameLabel">
+         <property name="text">
+          <string>SortName</string>
+         </property>
+        </widget>
+       </item>
+       <item row="3" column="1">
+        <widget class="QCheckBox" name="sortNameCheckBox">
+         <property name="enabled">
+          <bool>false</bool>
+         </property>
+        </widget>
+       </item>
+       <item row="4" column="0">
+        <widget class="QLabel" name="albumLabel">
+         <property name="text">
+          <string>Album</string>
+         </property>
+        </widget>
+       </item>
+       <item row="4" column="1">
+        <widget class="QCheckBox" name="albumCheckBox"/>
+       </item>
+       <item row="5" column="0">
+        <widget class="QLabel" name="sortAlbumLabel">
+         <property name="text">
+          <string>SortAlbum</string>
+         </property>
+        </widget>
+       </item>
+       <item row="5" column="1">
+        <widget class="QCheckBox" name="sortAlbumCheckBox"/>
+       </item>
+       <item row="6" column="0">
+        <widget class="QLabel" name="albumArtistLabel">
+         <property name="text">
+          <string>AlbumArtist</string>
+         </property>
+        </widget>
+       </item>
+       <item row="6" column="1">
+        <widget class="QCheckBox" name="albumArtistCheckBox"/>
+       </item>
+       <item row="7" column="0">
+        <widget class="QLabel" name="sortAlbumArtistLabel">
+         <property name="text">
+          <string>SortAlbumArtist</string>
+         </property>
+        </widget>
+       </item>
+       <item row="7" column="1">
+        <widget class="QCheckBox" name="sortAlbumArtistCheckBox">
+         <property name="enabled">
+          <bool>false</bool>
+         </property>
+        </widget>
+       </item>
+       <item row="8" column="0">
+        <widget class="QLabel" name="artistLabel">
+         <property name="text">
+          <string>Artist</string>
+         </property>
+        </widget>
+       </item>
+       <item row="8" column="1">
+        <widget class="QCheckBox" name="artistCheckBox"/>
+       </item>
+      </layout>
+     </item>
+     <item>
+      <layout class="QFormLayout" name="formLayout_2">
+       <item row="0" column="0">
+        <widget class="QLabel" name="sortArtistLabel">
+         <property name="text">
+          <string>SortArtist</string>
+         </property>
+        </widget>
+       </item>
+       <item row="0" column="1">
+        <widget class="QCheckBox" name="sortArtistCheckBox">
+         <property name="enabled">
+          <bool>false</bool>
+         </property>
+        </widget>
+       </item>
+       <item row="1" column="0">
+        <widget class="QLabel" name="composerLabel">
+         <property name="text">
+          <string>Composer</string>
+         </property>
+        </widget>
+       </item>
+       <item row="1" column="1">
+        <widget class="QCheckBox" name="composerCheckBox"/>
+       </item>
+       <item row="2" column="0">
+        <widget class="QLabel" name="sortComposerLabel">
+         <property name="text">
+          <string>SortComposer</string>
+         </property>
+        </widget>
+       </item>
+       <item row="2" column="1">
+        <widget class="QCheckBox" name="sortComposerCheckBox">
+         <property name="enabled">
+          <bool>false</bool>
+         </property>
+        </widget>
+       </item>
+       <item row="3" column="0">
+        <widget class="QLabel" name="groupingLabel">
+         <property name="text">
+          <string>Grouping</string>
+         </property>
+        </widget>
+       </item>
+       <item row="3" column="1">
+        <widget class="QCheckBox" name="groupingCheckBox"/>
+       </item>
+       <item row="4" column="0">
+        <widget class="QLabel" name="genreLabel">
+         <property name="text">
+          <string>Genre</string>
+         </property>
+        </widget>
+       </item>
+       <item row="4" column="1">
+        <widget class="QCheckBox" name="genreCheckBox"/>
+       </item>
+       <item row="5" column="0">
+        <widget class="QLabel" name="compilationLabel">
+         <property name="text">
+          <string>Compilation</string>
+         </property>
+        </widget>
+       </item>
+       <item row="5" column="1">
+        <widget class="QCheckBox" name="compilationCheckBox"/>
+       </item>
+       <item row="6" column="0">
+        <widget class="QLabel" name="discNumberLabel">
+         <property name="text">
+          <string>DiscNumber</string>
+         </property>
+        </widget>
+       </item>
+       <item row="6" column="1">
+        <widget class="QCheckBox" name="discNumberCheckBox"/>
+       </item>
+       <item row="7" column="0">
+        <widget class="QLabel" name="discCountLabel">
+         <property name="text">
+          <string>DiscCount</string>
+         </property>
+        </widget>
+       </item>
+       <item row="7" column="1">
+        <widget class="QCheckBox" name="discCountCheckBox"/>
+       </item>
+       <item row="8" column="0">
+        <widget class="QLabel" name="trackNumberLabel">
+         <property name="text">
+          <string>TrackNumber</string>
+         </property>
+        </widget>
+       </item>
+       <item row="8" column="1">
+        <widget class="QCheckBox" name="trackNumberCheckBox"/>
+       </item>
+      </layout>
+     </item>
+     <item>
+      <layout class="QFormLayout" name="formLayout_3">
+       <item row="0" column="0">
+        <widget class="QLabel" name="trackCountLabel">
+         <property name="text">
+          <string>TrackCount</string>
+         </property>
+        </widget>
+       </item>
+       <item row="0" column="1">
+        <widget class="QCheckBox" name="trackCountCheckBox"/>
+       </item>
+       <item row="1" column="0">
+        <widget class="QLabel" name="yearLabel">
+         <property name="text">
+          <string>Year</string>
+         </property>
+        </widget>
+       </item>
+       <item row="1" column="1">
+        <widget class="QCheckBox" name="yearCheckBox"/>
+       </item>
+       <item row="2" column="0">
+        <widget class="QLabel" name="playsLabel">
+         <property name="text">
+          <string>Plays</string>
+         </property>
+        </widget>
+       </item>
+       <item row="2" column="1">
+        <widget class="QCheckBox" name="playsCheckBox"/>
+       </item>
+       <item row="3" column="0">
+        <widget class="QLabel" name="playedLabel">
+         <property name="text">
+          <string>Played</string>
+         </property>
+        </widget>
+       </item>
+       <item row="3" column="1">
+        <widget class="QCheckBox" name="playedCheckBox"/>
+       </item>
+       <item row="4" column="0">
+        <widget class="QLabel" name="skipsLabel">
+         <property name="text">
+          <string>Skips</string>
+         </property>
+        </widget>
+       </item>
+       <item row="4" column="1">
+        <widget class="QCheckBox" name="skipsCheckBox"/>
+       </item>
+       <item row="5" column="0">
+        <widget class="QLabel" name="skippedLabel">
+         <property name="text">
+          <string>Skipped</string>
+         </property>
+        </widget>
+       </item>
+       <item row="5" column="1">
+        <widget class="QCheckBox" name="skippedCheckBox"/>
+       </item>
+       <item row="6" column="0">
+        <widget class="QLabel" name="checkedLabel">
+         <property name="text">
+          <string>Checked</string>
+         </property>
+        </widget>
+       </item>
+       <item row="6" column="1">
+        <widget class="QCheckBox" name="checkedCheckBox">
+         <property name="enabled">
+          <bool>false</bool>
+         </property>
+        </widget>
+       </item>
+       <item row="7" column="0">
+        <widget class="QLabel" name="commentLabel">
+         <property name="text">
+          <string>Comment</string>
+         </property>
+        </widget>
+       </item>
+       <item row="7" column="1">
+        <widget class="QCheckBox" name="commentCheckBox"/>
+       </item>
+       <item row="8" column="0">
+        <widget class="QLabel" name="descriptionLabel">
+         <property name="text">
+          <string>Description</string>
+         </property>
+        </widget>
+       </item>
+       <item row="8" column="1">
+        <widget class="QCheckBox" name="descriptionCheckBox">
+         <property name="enabled">
+          <bool>false</bool>
+         </property>
+        </widget>
+       </item>
+      </layout>
+     </item>
+     <item>
+      <layout class="QFormLayout" name="formLayout_4">
+       <item row="0" column="0">
+        <widget class="QLabel" name="longDescriptionLabel">
+         <property name="text">
+          <string>LongDescription</string>
+         </property>
+        </widget>
+       </item>
+       <item row="0" column="1">
+        <widget class="QCheckBox" name="longDescriptionCheckBox">
+         <property name="enabled">
+          <bool>false</bool>
+         </property>
+        </widget>
+       </item>
+       <item row="1" column="0">
+        <widget class="QLabel" name="lyricsLabel">
+         <property name="text">
+          <string>Lyrics</string>
+         </property>
+        </widget>
+       </item>
+       <item row="1" column="1">
+        <widget class="QCheckBox" name="lyricsCheckBox">
+         <property name="enabled">
+          <bool>false</bool>
+         </property>
+        </widget>
+       </item>
+       <item row="2" column="0">
+        <widget class="QLabel" name="bitRateLabel">
+         <property name="text">
+          <string>BitRate</string>
+         </property>
+        </widget>
+       </item>
+       <item row="2" column="1">
+        <widget class="QCheckBox" name="bitRateCheckBox"/>
+       </item>
+       <item row="3" column="0">
+        <widget class="QLabel" name="kindAsStringLabel">
+         <property name="text">
+          <string>KindAsString</string>
+         </property>
+        </widget>
+       </item>
+       <item row="3" column="1">
+        <widget class="QCheckBox" name="kindAsStringCheckBox"/>
+       </item>
+       <item row="4" column="0">
+        <widget class="QLabel" name="bpmLabel">
+         <property name="text">
+          <string>BPM</string>
+         </property>
+        </widget>
+       </item>
+       <item row="4" column="1">
+        <widget class="QCheckBox" name="bpmCheckBox"/>
+       </item>
+       <item row="5" column="0">
+        <widget class="QLabel" name="eqLabel">
+         <property name="text">
+          <string>EQ</string>
+         </property>
+        </widget>
+       </item>
+       <item row="5" column="1">
+        <widget class="QCheckBox" name="eqCheckBox"/>
+       </item>
+       <item row="6" column="0">
+        <widget class="QLabel" name="vaLabel">
+         <property name="text">
+          <string>VA</string>
+         </property>
+        </widget>
+       </item>
+       <item row="6" column="1">
+        <widget class="QCheckBox" name="vaCheckBox"/>
+       </item>
+       <item row="7" column="0">
+        <widget class="QLabel" name="startLabel">
+         <property name="text">
+          <string>Start</string>
+         </property>
+        </widget>
+       </item>
+       <item row="7" column="1">
+        <widget class="QCheckBox" name="startCheckBox"/>
+       </item>
+       <item row="8" column="0">
+        <widget class="QLabel" name="finishLabel">
+         <property name="text">
+          <string>Finish</string>
+         </property>
+        </widget>
+       </item>
+       <item row="8" column="1">
+        <widget class="QCheckBox" name="finishCheckBox"/>
+       </item>
+      </layout>
+     </item>
+     <item>
+      <layout class="QFormLayout" name="formLayout_5">
+       <item row="0" column="0">
+        <widget class="QLabel" name="excludeFromShuffleLabel">
+         <property name="text">
+          <string>ExcludeFromShuffle</string>
+         </property>
+        </widget>
+       </item>
+       <item row="0" column="1">
+        <widget class="QCheckBox" name="excludeFromShuffleCheckBox">
+         <property name="enabled">
+          <bool>false</bool>
+         </property>
+        </widget>
+       </item>
+       <item row="1" column="0">
+        <widget class="QLabel" name="rememberBookmarkLabel">
+         <property name="text">
+          <string>RememberBookmark</string>
+         </property>
+        </widget>
+       </item>
+       <item row="1" column="1">
+        <widget class="QCheckBox" name="rememberBookmarkCheckBox">
+         <property name="enabled">
+          <bool>false</bool>
+         </property>
+        </widget>
+       </item>
+       <item row="2" column="0">
+        <widget class="QLabel" name="bookmarkTimeLabel">
+         <property name="text">
+          <string>BookmarkTime</string>
+         </property>
+        </widget>
+       </item>
+       <item row="2" column="1">
+        <widget class="QCheckBox" name="bookmarkTimeCheckBox">
+         <property name="enabled">
+          <bool>false</bool>
+         </property>
+        </widget>
+       </item>
+       <item row="3" column="0">
+        <widget class="QLabel" name="albumRatingLabel">
+         <property name="text">
+          <string>AlbumRating</string>
+         </property>
+        </widget>
+       </item>
+       <item row="3" column="1">
+        <widget class="QCheckBox" name="albumRatingCheckBox">
+         <property name="enabled">
+          <bool>false</bool>
+         </property>
+        </widget>
+       </item>
+       <item row="4" column="0">
+        <widget class="QLabel" name="ratingLabel">
+         <property name="text">
+          <string>Rating</string>
+         </property>
+        </widget>
+       </item>
+       <item row="4" column="1">
+        <widget class="QCheckBox" name="ratingCheckBox">
+         <property name="enabled">
+          <bool>false</bool>
+         </property>
+        </widget>
+       </item>
+       <item row="5" column="0">
+        <widget class="QLabel" name="showLabel">
+         <property name="text">
+          <string>Show</string>
+         </property>
+        </widget>
+       </item>
+       <item row="5" column="1">
+        <widget class="QCheckBox" name="showCheckBox">
+         <property name="enabled">
+          <bool>false</bool>
+         </property>
+        </widget>
+       </item>
+       <item row="6" column="0">
+        <widget class="QLabel" name="sortShowLabel">
+         <property name="text">
+          <string>SortShow</string>
+         </property>
+        </widget>
+       </item>
+       <item row="6" column="1">
+        <widget class="QCheckBox" name="sortShowCheckBox">
+         <property name="enabled">
+          <bool>false</bool>
+         </property>
+        </widget>
+       </item>
+       <item row="7" column="0">
+        <widget class="QLabel" name="seasonLabel">
+         <property name="text">
+          <string>Season</string>
+         </property>
+        </widget>
+       </item>
+       <item row="7" column="1">
+        <widget class="QCheckBox" name="seasonCheckBox">
+         <property name="enabled">
+          <bool>false</bool>
+         </property>
+        </widget>
+       </item>
+       <item row="8" column="0">
+        <widget class="QLabel" name="episodeLabel">
+         <property name="text">
+          <string>Episode</string>
+         </property>
+        </widget>
+       </item>
+       <item row="8" column="1">
+        <widget class="QCheckBox" name="episodeCheckBox">
+         <property name="enabled">
+          <bool>false</bool>
+         </property>
+        </widget>
+       </item>
+       <item row="9" column="0">
+        <widget class="QLabel" name="artworkLabel">
+         <property name="text">
+          <string>Artwork</string>
+         </property>
+        </widget>
+       </item>
+       <item row="9" column="1">
+        <widget class="QCheckBox" name="artworkCheckBox">
+         <property name="enabled">
+          <bool>false</bool>
+         </property>
+        </widget>
+       </item>
+      </layout>
+     </item>
+    </layout>
+   </item>
+   <item>
+    <layout class="QHBoxLayout" name="horizontalLayout_3">
+     <item>
+      <spacer name="horizontalSpacer">
+       <property name="orientation">
+        <enum>Qt::Horizontal</enum>
+       </property>
+       <property name="sizeHint" stdset="0">
+        <size>
+         <width>40</width>
+         <height>20</height>
+        </size>
+       </property>
+      </spacer>
+     </item>
+     <item>
+      <widget class="QPushButton" name="saveButton">
+       <property name="enabled">
+        <bool>false</bool>
+       </property>
+       <property name="text">
+        <string>Save</string>
+       </property>
+      </widget>
+     </item>
+     <item>
+      <widget class="QPushButton" name="cancelButton">
+       <property name="text">
+        <string>Cancel</string>
+       </property>
+      </widget>
+     </item>
+    </layout>
+   </item>
+  </layout>
+ </widget>
+ <resources/>
+ <connections/>
+</ui>

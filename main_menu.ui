@@ -6,8 +6,8 @@
    <rect>
     <x>0</x>
     <y>0</y>
-    <width>660</width>
-    <height>245</height>
+    <width>650</width>
+    <height>300</height>
    </rect>
   </property>
   <property name="sizePolicy">
@@ -15,6 +15,12 @@
     <horstretch>0</horstretch>
     <verstretch>0</verstretch>
    </sizepolicy>
+  </property>
+  <property name="minimumSize">
+   <size>
+    <width>650</width>
+    <height>300</height>
+   </size>
   </property>
   <property name="windowTitle">
    <string>bpsync</string>
@@ -61,6 +67,26 @@
     </widget>
    </item>
    <item row="2" column="0">
+    <widget class="QPushButton" name="launch_export_button">
+     <property name="enabled">
+      <bool>true</bool>
+     </property>
+     <property name="text">
+      <string>XML to ExportImport</string>
+     </property>
+    </widget>
+   </item>
+   <item row="2" column="1">
+    <widget class="QLabel" name="label_5">
+     <property name="text">
+      <string>Generate a file that can be used with ExportImport from (any) input XML file.</string>
+     </property>
+     <property name="wordWrap">
+      <bool>true</bool>
+     </property>
+    </widget>
+   </item>
+   <item row="3" column="0">
     <widget class="QPushButton" name="launch_bpstat_button">
      <property name="enabled">
       <bool>false</bool>
@@ -70,7 +96,7 @@
      </property>
     </widget>
    </item>
-   <item row="2" column="1">
+   <item row="3" column="1">
     <widget class="QLabel" name="label_3">
      <property name="text">
       <string>Convert a .bpstat file into an iTunes XML file.</string>
@@ -80,7 +106,7 @@
      </property>
     </widget>
    </item>
-   <item row="3" column="0">
+   <item row="4" column="0">
     <widget class="QPushButton" name="launch_m3u_button">
      <property name="enabled">
       <bool>false</bool>
@@ -90,7 +116,7 @@
      </property>
     </widget>
    </item>
-   <item row="3" column="1">
+   <item row="4" column="1">
     <widget class="QLabel" name="label_4">
      <property name="text">
       <string>Generate an m3u file for playlists that's importable into BlackPlayer.</string>

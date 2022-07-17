@@ -32,9 +32,8 @@ from first_time import Ui_FirstTimeWindow
 from std_sync import Ui_StandardSyncWindow
 from ignored_songs import Ui_IgnoredSongsDialog
 from progress import Ui_ProcessingProgress
+from exportimport import Ui_ExportImportWindow
 from PySide6 import QtWidgets, QtCore, QtGui
-
-
 
 class MainMenuWindow(QtWidgets.QWidget, Ui_MainMenuWindow):
     def __init__(self):
@@ -44,16 +43,26 @@ class MainMenuWindow(QtWidgets.QWidget, Ui_MainMenuWindow):
 
         self.launch_first_button.clicked.connect(self.open_first_sync)
         self.launch_std_button.clicked.connect(self.open_std_sync)
+        self.launch_export_button.clicked.connect(self.open_export_dialog)
         self.launch_bpstat_button.clicked.connect(self.open_bpstat_converter)
         self.launch_m3u_button.clicked.connect(self.open_m3u_generator)
 
+    # Note - these windows will disappear as soon as there are no references
+    # to them, so we use self.window
+    #
+    # Before, this wasn't necessary, probably because of some lambda call leading
+    # to a permanent reference out in space
     def open_first_sync(self):
-        window = FirstTimeWindow()
-        window.show()
+        self.window = FirstTimeWindow()
+        self.window.show()
 
     def open_std_sync(self):
-        window = StandardSyncWindow()
-        window.show()
+        self.window = StandardSyncWindow()
+        self.window.show()
+
+    def open_export_dialog(self):
+        self.window = ExportImportWindow()
+        self.window.show()
 
     def open_bpstat_converter(self):
         pass
@@ -172,6 +181,12 @@ class FirstTimeWindow(QtWidgets.QWidget, Ui_FirstTimeWindow):
         # subclass of SongView and a "updated songs" subclass. on the other hand, this gives us
         # a little more control over the logic if something does need to happen
         # in one table that doesn't happen in the other
+        #
+        # alternatively, we could just set up a callback function that dictates where to
+        # get data from
+        #
+        # also at this point songview should inherit from a generic "table with 
+        # checkbox" class
 
         # Search for equivalent row in the underlying data
         # Linear is good enough
@@ -244,9 +259,11 @@ class StandardSyncWindow(QtWidgets.QWidget, Ui_StandardSyncWindow):
     def __init__(self):
         super().__init__()
 
+        # Init
         self.setWindowModality(QtCore.Qt.ApplicationModal)
         self.setupUi(self)
 
+        # Window vars
         self.program_path = QtCore.QDir.currentPath()
         self.lib = None  # libpytunes Library object
         self.db_songs = None  # Array of StoredSong objects from querying database
@@ -260,8 +277,7 @@ class StandardSyncWindow(QtWidgets.QWidget, Ui_StandardSyncWindow):
         self.data_path_lineedit.setText('data')
         self.backup_path_lineedit.setText('backups')
 
-        # Signals and slots
-        ## Buttons
+        # Buttons
         self.xml_browse_button.clicked.connect(self.xml_open_prompt)
         self.bpstat_browse_button.clicked.connect(self.bpstat_open_prompt)
         self.database_browse_button.clicked.connect(self.database_open_prompt)
@@ -275,21 +291,24 @@ class StandardSyncWindow(QtWidgets.QWidget, Ui_StandardSyncWindow):
 
         self.start_button.clicked.connect(self.start_processing)
 
-        ## Table functionality
+        # Table functionality
+        # Context menu
         self.songs_changed_table.customContextMenuRequested.connect(
             lambda pos: self.songs_changed_table.show_context_menu(pos, self.lib))
         self.songs_changed_table.context_menu_enabled = True
         self.new_songs_table.customContextMenuRequested.connect(
             lambda pos: self.new_songs_table.show_context_menu(pos, self.lib))
         self.new_songs_table.context_menu_enabled = True
+
+        # Song library change updates (edits to self.lib)
         self.songs_changed_table.songChanged.connect(self.update_song_in_songs_changed_table)
         self.new_songs_table.songChanged.connect(self.update_song_in_new_songs_table)
 
         self.songs_changed_lineedit.textChanged.connect(lambda text: self.songs_changed_table.proxy.set_filter_text(text))
-        self.new_songs_lineedit.textChanged.connect(lambda text: self.new_songs_table.proxy.set_filter_text(text))
+        self.new_songs_lineedit.textChanged.connect(lambda text: self.new_songs_table.proxy.set_filter_text(text))        
 
         # Synced songs table
-        ## In order: column headers, starting data, checkbox columns, columns to filter on with lineedit
+        # In order: column headers, starting data, checkbox columns, columns to filter on with lineedit
         headers_delta = ["Track ID", "Reprocess", "Title", "Artist", "Album", "Base plays", "XML plays", "BP plays", "Delta", "New playcount", "Persistent ID"]
         data_delta = [[2, 1, "Call My Name Feat. Yukacco", "mameyudoufu", "「FÜGENE2」", 25, 38, 42, "+30", 55, "DEAE900B9933338C"]]
         box_columns_delta = [1]
@@ -380,8 +399,8 @@ class StandardSyncWindow(QtWidgets.QWidget, Ui_StandardSyncWindow):
             return
 
         # Check if filepaths are valid - validation done here for direct access to error window
-        # TODO: Custom exception class, move out of this UI function
         # try generating the libpytunes library from specified XML
+        # TODO: move into completely separate function (prevents partial loading of data into self.lib, etc.)
         try:
             self.lib = Library(xml_path)
         except xml.parsers.expat.ExpatError as e:
@@ -429,6 +448,16 @@ class StandardSyncWindow(QtWidgets.QWidget, Ui_StandardSyncWindow):
         self.db_initialized = True
 
         # TODO: Calculate top-right statistics
+        # Best way is probably a helper function returning the starting values
+        # from existing_data and new_data (separately)
+
+        # Enable updates from checkboxes
+        # This has to be done here because the table model doesn't exist until
+        # the checkbox columns, headers, etc. are set
+        # TODO: move table model creation to __init__ 
+        # TODO: implement in first-time table
+        self.new_songs_table.table_model.dataChanged.connect(lambda idx: self.update_stats_from_index(idx, "new"))
+        self.songs_changed_table.table_model.dataChanged.connect(lambda idx: self.update_stats_from_index(idx, "existing"))
 
     def update_song_in_songs_changed_table(self, song):
         """
@@ -491,6 +520,11 @@ class StandardSyncWindow(QtWidgets.QWidget, Ui_StandardSyncWindow):
         # Tell the model to update
         # inefficient call?
         self.new_songs_table.set_data(data)
+
+    def update_stats_from_index(self, index, table_source):
+        #TODO: implement
+        # Get track ID in the same row as the index in column 0
+        print(index, table_source)
 
     def start_processing(self):
         # Get all backup paths, store into array
@@ -627,11 +661,130 @@ class IgnoredSongsDialog(QtWidgets.QDialog, Ui_IgnoredSongsDialog):
         # Call super
         super().accept()
 
+class ExportImportWindow(QtWidgets.QWidget, Ui_ExportImportWindow):
+    def __init__(self):
+        """
+        Set up the ExportImportWindow.
+        """
+        super().__init__()
+
+        self.lib = None
+        self.program_path = QtCore.QDir.currentPath()
+
+        self.setWindowModality(QtCore.Qt.ApplicationModal)
+        self.setupUi(self)
+        
+        # Input filepath
+        self.xml_browse_button.clicked.connect(self.xml_open_prompt)
+        self.xml_load_button.clicked.connect(self.update_with_xml)
+
+        # Accept/reject buttons
+        self.saveButton.clicked.connect(self.start_processing)
+        self.cancelButton.clicked.connect(lambda: self.close())
+
+    def xml_open_prompt(self):
+        file_name, _ = QtWidgets.QFileDialog.getOpenFileName(self, "Open XML", self.program_path,
+                "XML (*.xml);;All Files (*)")
+        if file_name:
+            self.xml_path_lineedit.setText(file_name)
+
+    def update_with_xml(self):
+        # get contents of lineedit
+        xml_path = self.xml_path_lineedit.text()
+        if not xml_path:
+            bpsynctools.show_error_window("Please enter an XML path!",
+                              "You can do this by manually entering the path or selecting it by clicking Browse.",
+                              "No XML path defined")
+            return
+        # generate library from it
+        try:
+            self.lib = Library(xml_path)
+        except xml.parsers.expat.ExpatError as e:
+            bpsynctools.show_error_window("Invalid XML file!",
+                              f"Couldn't parse XML file (if it is one) - {e}",
+                              "Invalid XML file")
+            return
+        except FileNotFoundError:
+            bpsynctools.show_error_window("File not found!",
+                              "The entered path doesn't appear to exist.",
+                              "Invalid XML filepath")
+            return
+
+        # update statistics counter
+        self.songsLoadedLabel.setText(f"{len(self.lib.songs)} songs loaded")
+
+        # enable buttonBox
+        self.saveButton.setEnabled(True)
+
+    def set_output_path(self):
+        path = QtWidgets.QFileDialog.getSaveFileName(self,
+                "Save ExportImport file as...", self.program_path,
+                "Text file (*.txt);;All Files (*)")
+        if path:
+            self.save_path_lineedit.setText(path)
+
+    def start_processing(self):
+        """
+        On dialog accept ("Save" button is clicked).
+
+        After asserting that the necessary inputs exist, this function
+        searches the widget for all the available checkboxes. The widget
+        has been designed such that the checkboxes have similar names
+        to their corresponding labels, which have the exact text required
+        for the add_to_exportimport function.
+        """
+        # Assert library exists
+        if not self.lib:
+            bpsynctools.show_error_window("No library loaded!",
+                                          "The underlying library doesn't have anything - did you load an XML?",
+                                          "No library loaded")
+            # This really shouldn't be possible anyways
+            logger.error("Got accept() even though the buttonBox is disabled?")
+            return
+
+        # Have user specify the save path
+        # If they cancel and no path is returned, return early
+        output_path, _ = QtWidgets.QFileDialog.getSaveFileName(self,
+                "Save ExportImport file as...", self.program_path,
+                "Text file (*.txt);;All Files (*)")
+        if not output_path:
+            # Same as just cancelling the save operation
+            return
+
+        # Gather all ticked checkboxes
+        checkboxes = self.findChildren(QtWidgets.QCheckBox)
+        checked_checkbox_names = []
+        for checkbox in checkboxes:
+            if checkbox.isChecked():
+                checked_checkbox_names.append(checkbox.objectName())
+                
+        # Get the names of all associated labels by replacing "CheckBox" with "Label"
+        label_names = [obj_name.replace("CheckBox", "Label") for obj_name in checked_checkbox_names]
+
+        # For each label, get its actual containing text
+        tags = []
+        for label_name in label_names:
+            label = getattr(self, label_name) # (should) return QLabel object
+            tags.append(label.text())
+
+        # Pass into add_to_exportimport, raise error otherwise 
+        try:
+            bpsynctools.add_to_exportimport(self.lib, tags, output_path)
+
+            msg = QtWidgets.QMessageBox()
+            msg.setIcon(QtWidgets.QMessageBox.NoIcon)
+            msg.setText("Processing complete. Check the results for accuracy.")
+            msg.setWindowTitle("ExportImport file complete")
+            msg.exec()
+        except Exception as e:
+            bpsynctools.show_error_window("Something went wrong while generating the ExportImport file!",
+                    str(e),
+                    "Processing error")
+
 
 if __name__ == "__main__":
     app = QtWidgets.QApplication(sys.argv)
 
-    #window = FirstTimeWindow()
     window = MainMenuWindow()
     window.show()
 

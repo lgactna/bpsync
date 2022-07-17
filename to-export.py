@@ -1,3 +1,5 @@
+# TODO: THIS IS NO LONGER VALID, DO NOT USE
+
 import models
 from bpsynctools import add_to_exportimport
 

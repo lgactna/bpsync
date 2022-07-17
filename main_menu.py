@@ -22,12 +22,13 @@ class Ui_MainMenuWindow(object):
     def setupUi(self, MainMenuWindow):
         if not MainMenuWindow.objectName():
             MainMenuWindow.setObjectName(u"MainMenuWindow")
-        MainMenuWindow.resize(660, 245)
+        MainMenuWindow.resize(650, 300)
         sizePolicy = QSizePolicy(QSizePolicy.Fixed, QSizePolicy.Fixed)
         sizePolicy.setHorizontalStretch(0)
         sizePolicy.setVerticalStretch(0)
         sizePolicy.setHeightForWidth(MainMenuWindow.sizePolicy().hasHeightForWidth())
         MainMenuWindow.setSizePolicy(sizePolicy)
+        MainMenuWindow.setMinimumSize(QSize(650, 300))
         self.gridLayout = QGridLayout(MainMenuWindow)
         self.gridLayout.setObjectName(u"gridLayout")
         self.launch_first_button = QPushButton(MainMenuWindow)
@@ -53,29 +54,41 @@ class Ui_MainMenuWindow(object):
 
         self.gridLayout.addWidget(self.label_2, 1, 1, 1, 1)
 
+        self.launch_export_button = QPushButton(MainMenuWindow)
+        self.launch_export_button.setObjectName(u"launch_export_button")
+        self.launch_export_button.setEnabled(True)
+
+        self.gridLayout.addWidget(self.launch_export_button, 2, 0, 1, 1)
+
+        self.label_5 = QLabel(MainMenuWindow)
+        self.label_5.setObjectName(u"label_5")
+        self.label_5.setWordWrap(True)
+
+        self.gridLayout.addWidget(self.label_5, 2, 1, 1, 1)
+
         self.launch_bpstat_button = QPushButton(MainMenuWindow)
         self.launch_bpstat_button.setObjectName(u"launch_bpstat_button")
         self.launch_bpstat_button.setEnabled(False)
 
-        self.gridLayout.addWidget(self.launch_bpstat_button, 2, 0, 1, 1)
+        self.gridLayout.addWidget(self.launch_bpstat_button, 3, 0, 1, 1)
 
         self.label_3 = QLabel(MainMenuWindow)
         self.label_3.setObjectName(u"label_3")
         self.label_3.setWordWrap(True)
 
-        self.gridLayout.addWidget(self.label_3, 2, 1, 1, 1)
+        self.gridLayout.addWidget(self.label_3, 3, 1, 1, 1)
 
         self.launch_m3u_button = QPushButton(MainMenuWindow)
         self.launch_m3u_button.setObjectName(u"launch_m3u_button")
         self.launch_m3u_button.setEnabled(False)
 
-        self.gridLayout.addWidget(self.launch_m3u_button, 3, 0, 1, 1)
+        self.gridLayout.addWidget(self.launch_m3u_button, 4, 0, 1, 1)
 
         self.label_4 = QLabel(MainMenuWindow)
         self.label_4.setObjectName(u"label_4")
         self.label_4.setWordWrap(True)
 
-        self.gridLayout.addWidget(self.label_4, 3, 1, 1, 1)
+        self.gridLayout.addWidget(self.label_4, 4, 1, 1, 1)
 
 
         self.retranslateUi(MainMenuWindow)
@@ -89,6 +102,8 @@ class Ui_MainMenuWindow(object):
         self.label.setText(QCoreApplication.translate("MainMenuWindow", u"Start here if you need to create the song database. Can also be used to process songs without tracking them if needed.", None))
         self.launch_std_button.setText(QCoreApplication.translate("MainMenuWindow", u"Standard sync", None))
         self.label_2.setText(QCoreApplication.translate("MainMenuWindow", u"Use this if you have a song database.", None))
+        self.launch_export_button.setText(QCoreApplication.translate("MainMenuWindow", u"XML to ExportImport", None))
+        self.label_5.setText(QCoreApplication.translate("MainMenuWindow", u"Generate a file that can be used with ExportImport from (any) input XML file.", None))
         self.launch_bpstat_button.setText(QCoreApplication.translate("MainMenuWindow", u".bpstat to XML converter", None))
         self.label_3.setText(QCoreApplication.translate("MainMenuWindow", u"Convert a .bpstat file into an iTunes XML file.", None))
         self.launch_m3u_button.setText(QCoreApplication.translate("MainMenuWindow", u"Generate .m3u", None))
