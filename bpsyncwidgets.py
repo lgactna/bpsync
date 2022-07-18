@@ -782,7 +782,15 @@ class StandardWorker(SongWorker):
                 # write out to bpstat
                 bpsynctools.add_to_bpstat(self.lib.songs[track_id], self.bpstat_prefix, self.bpstat_path)
                 bpsynctools.add_to_exportimport(db_song, self.exportimport_path)
-                
+
+            # Remove previously ignored songs if applicable
+            for track_id in self.tracking_ids:
+                lib_song_id = lib.songs[track_id].persistent_id
+                ignored_song = session.query(models.IgnoredSong).filter(models.IgnoredSong.persistent_id==persistent_id).scalar()
+                if ignored_song:
+                    ignored_song.delete()
+                    logger.info(f"Found {lib_song_id} in the ignored songs database; it's now being tracked, so it was removed")
+
             # commit changes
             session.commit()
 
