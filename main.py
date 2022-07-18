@@ -80,6 +80,9 @@ class FirstTimeWindow(QtWidgets.QWidget, Ui_FirstTimeWindow):
         self.program_path = QtCore.QDir.currentPath()
         self.lib = None  # libpytunes Library object
         self.thread_manager = QtCore.QThreadPool()
+        
+        # Top-right statistics; all 0 at start.
+        self.stats = bpsynctools.TableStatistics()
 
         # Prepopulate fields
         self.mp3_path_lineedit.setText('tmp')
@@ -103,16 +106,21 @@ class FirstTimeWindow(QtWidgets.QWidget, Ui_FirstTimeWindow):
 
         # Table
         # In order: column headers, starting data, checkbox columns, columns to filter on with lineedit
-        headers = ["Track ID", "Copy?", "Track?", "Title", "Artist", "Album", "Plays", "Trimmed?", "Volume%", "Filepath"]
+        headers = ["Track ID", "Process?", "Track?", "Title", "Artist", "Album", "Plays", "Trimmed?", "Volume%", "Filepath"]
         data = [[1, 1, 1, "YU.ME.NO !", "ユメガタリ(ミツキヨ , shnva)", " ユメの喫茶店", 24, "No", "100%", "D:/Music/a.mp3"]]
         box_columns = [1, 2]
         filter_on = [3, 4, 5]
 
-        column_sizes = [50, 80, 80, 200, 120, 120, 50, 100, 50, 200]
+        column_sizes = [50, 100, 100, 200, 120, 120, 50, 100, 50, 200]
 
         ## Set up initial table contents and formatting
-        self.table_widget.setup(headers, data, box_columns, filter_on)
+        self.table_widget.setup(headers, box_columns, filter_on)
+        self.table_widget.set_data(data)
         self.table_widget.set_column_widths(column_sizes)
+
+        # Enable updates from checkbox
+        # Note that this breaks if the underlying table model is changed (which shouldn't change)
+        self.table_widget.table_model.dataChanged.connect(lambda idx: self.update_stats_from_index(idx, self.table_widget))
 
     def xml_open_prompt(self):
         file_name, _ = QtWidgets.QFileDialog.getOpenFileName(self, "Open XML", self.program_path,
@@ -153,21 +161,16 @@ class FirstTimeWindow(QtWidgets.QWidget, Ui_FirstTimeWindow):
                               "The entered path doesn't appear to exist.",
                               "Invalid XML filepath")
             return
+        
         # update table from it
         data = bpsynctools.first_sync_array_from_libpysongs(self.lib.songs)
         self.table_widget.set_data(data)
 
-        # TODO: Calculate top-right statistics
-        # There's two parts to this: calculating the inital set of statistics, probably in a separate function,
-        # and maintaing the state of the statistics. The simplest way is to connect to each underlying
-        # table model's dataChanged signal, then get its row value and use that directly against
-        # the table model's data() function (or construct a new index with column 0, the track ID).
-        # This does require many calls when a checkbox header is clicked, but this isn't that high of an
-        # overhead.
-        #
-        # Also, check to make sure that the newly-updated index is in the "processing" column, 
-        # otherwise there's no need to update (unless we're also keeping track of the number of 
-        # tracked songs).
+        # Generate initial statistics (overwrites current object)
+        self.stats = bpsynctools.get_statistics(self.table_widget.table_model.array_data, self.lib, 2, 1)
+
+        # Update stat labels
+        self.update_statistics_labels()
 
     def update_song_in_table_widget(self, song):
         """
@@ -211,6 +214,78 @@ class FirstTimeWindow(QtWidgets.QWidget, Ui_FirstTimeWindow):
         # Tell the model to update
         # inefficient call?
         self.table_widget.set_data(data)
+
+    def update_stats_from_index(self, index, table):
+        """
+        Update the top-right statistics from a checkbox tick/untick.
+        """
+        # Check if library has been loaded; else, ignore
+        if not self.lib:
+            return
+
+        # Check if the index's column is in one of the checkbox columns; else, ignore
+        if index.column() not in table.table_model.checkbox_columns:
+            return
+        
+        # Get track ID in the same row as the index in column 0
+        # Signature: createIndex(row, column, ptr)
+        # ptr is quite interesting: https://doc.qt.io/qtforpython/PySide6/QtCore/QAbstractItemModel.html#PySide6.QtCore.PySide6.QtCore.QAbstractItemModel.createIndex
+        track_id_index = table.table_model.createIndex(index.row(), 0, table)
+        track_id = table.table_model.data(track_id_index, QtCore.Qt.DisplayRole)
+
+        # Look it up in the library
+        try:
+            song = self.lib.songs[track_id]
+        except KeyError:
+            # If it doesn't exist (somehow), exit early
+            logger.error(f"Couldn't find {track_id} when updating statistics?")
+            return
+
+        # Either increment or decrement counters as needed
+        # It's the case that processing is always in column index 1,
+        # and tracking is always in column index 2. This is hardcoded
+        # because I don't expect this to change anytime soon.
+
+        # Get new state of checkbox and update stats accordingly
+        new_state = table.table_model.data(index, QtCore.Qt.DisplayRole)
+        if index.column() == 1:
+            if new_state == True:
+                self.stats.num_processing += 1
+                self.stats.size_processing += song.size                
+            else:
+                self.stats.num_processing -= 1
+                self.stats.size_processing -= song.size
+        elif index.column() == 2:
+            if new_state == True:
+                self.stats.num_tracking += 1      
+            else:
+                self.stats.num_tracking -= 1
+        else:
+            logger.error(f"Tried looking up column {index.column()} for statistics updates?")
+
+        # Update statistics labels
+        self.update_statistics_labels()
+    
+    def update_statistics_labels(self):
+        """
+        Update labels from self.stats. 
+        
+        Call after the XML has been loaded or a checkbox state has changed.
+        """
+        # Check if self.lib loaded; else, refuse.
+        if not self.lib:
+            logger.error(f"Tried to update statistics when the table wasn't ready yet?")
+            return
+        
+        # len() is constant time in CPython.
+        num_tracks = len(self.lib.songs)
+
+        # Update all labels.
+        self.tracks_found_label.setText(f"{num_tracks} tracks found")
+        self.tracks_totalsize_label.setText(f"{bpsynctools.humanbytes(self.stats.total_size)} total size")
+        self.tracks_synccount_label.setText(f"{self.stats.num_tracking} songs to track")
+        self.tracks_copysize_label.setText(f"{bpsynctools.humanbytes(self.stats.size_processing)} to process")
+        self.tracks_copycount_label.setText(f"{self.stats.num_processing} tracks to process")
 
     def start_processing(self):
         # Check if all necessary fields are (probably) filled out
@@ -270,7 +345,12 @@ class StandardSyncWindow(QtWidgets.QWidget, Ui_StandardSyncWindow):
         self.bpsongs = None # Array of BPSong objects.
         self.thread_manager = QtCore.QThreadPool()
 
+        # TODO: whether the db is initialized or not IS NOT the window's responsibility to remember
+        # add a value to models or something
         self.db_initialized = False  # Whether or not the database file has been loaded
+
+        # Top-right statistics; all 0 at start.
+        self.stats = bpsynctools.TableStatistics()
 
         # Prepopulate fields
         self.mp3_path_lineedit.setText('tmp')
@@ -309,26 +389,33 @@ class StandardSyncWindow(QtWidgets.QWidget, Ui_StandardSyncWindow):
 
         # Synced songs table
         # In order: column headers, starting data, checkbox columns, columns to filter on with lineedit
-        headers_delta = ["Track ID", "Reprocess", "Title", "Artist", "Album", "Base plays", "XML plays", "BP plays", "Delta", "New playcount", "Persistent ID"]
+        headers_delta = ["Track ID", "Reprocess?", "Title", "Artist", "Album", "Base plays", "XML plays", "BP plays", "Delta", "New playcount", "Persistent ID"]
         data_delta = [[2, 1, "Call My Name Feat. Yukacco", "mameyudoufu", "「FÜGENE2」", 25, 38, 42, "+30", 55, "DEAE900B9933338C"]]
-        box_columns_delta = [1]
+        box_columns_delta = [1] # Processing column = 1
         filter_on_delta = [1, 3, 4, 10]
 
-        column_sizes_delta = [50, 100, 200, 120, 120, 80, 80, 80, 80, 100, 200]
+        column_sizes_delta = [50, 120, 200, 120, 120, 80, 80, 80, 80, 100, 200]
 
-        self.songs_changed_table.setup(headers_delta, data_delta, box_columns_delta, filter_on_delta)
+        self.songs_changed_table.setup(headers_delta, box_columns_delta, filter_on_delta)
+        self.songs_changed_table.set_data(data_delta)
         self.songs_changed_table.set_column_widths(column_sizes_delta)
 
         # New songs table
-        headers = ["Track ID", "Copy?", "Track?", "Title", "Artist", "Album", "Plays", "Trimmed?", "Volume%", "Filepath"]
+        headers = ["Track ID", "Process?", "Track?", "Title", "Artist", "Album", "Plays", "Trimmed?", "Volume%", "Filepath"]
         data = [[1, 1, 1, "YU.ME.NO !", "ユメガタリ(ミツキヨ , shnva)", " ユメの喫茶店", 24, "No", "100%", "D:/Music/a.mp3"]]
-        box_columns = [1, 2]
+        box_columns = [1, 2] # Processing column = 1, tracking column = 2
         filter_on = [3, 4, 5]
 
-        column_sizes = [50, 80, 80, 200, 120, 120, 50, 100, 50, 200]
+        column_sizes = [50, 100, 100, 200, 120, 120, 50, 100, 50, 200]
 
-        self.new_songs_table.setup(headers, data, box_columns, filter_on)
+        self.new_songs_table.setup(headers, box_columns, filter_on)
+        self.new_songs_table.set_data(data)
         self.new_songs_table.set_column_widths(column_sizes)
+
+        # Enable updates from checkbox
+        # Note that this breaks if the underlying table model is changed (which shouldn't change)
+        self.new_songs_table.table_model.dataChanged.connect(lambda idx: self.update_stats_from_index(idx, self.new_songs_table))
+        self.songs_changed_table.table_model.dataChanged.connect(lambda idx: self.update_stats_from_index(idx, self.songs_changed_table))
     
     def open_ignored_songs_dialog(self):
         # whose responsibility is it to keep track of this?
@@ -447,17 +534,14 @@ class StandardSyncWindow(QtWidgets.QWidget, Ui_StandardSyncWindow):
         # Mark database as ready
         self.db_initialized = True
 
-        # TODO: Calculate top-right statistics
-        # Best way is probably a helper function returning the starting values
-        # from existing_data and new_data (separately)
-
-        # Enable updates from checkboxes
-        # This has to be done here because the table model doesn't exist until
-        # the checkbox columns, headers, etc. are set
-        # TODO: move table model creation to __init__ 
-        # TODO: implement in first-time table
-        self.new_songs_table.table_model.dataChanged.connect(lambda idx: self.update_stats_from_index(idx, "new"))
-        self.songs_changed_table.table_model.dataChanged.connect(lambda idx: self.update_stats_from_index(idx, "existing"))
+        # Generate initial statistics (overwrites current object)
+        # These have to be generated on a per-table basis
+        songs_changed_stats = bpsynctools.get_statistics(self.songs_changed_table.table_model.array_data, self.lib, None, 1)
+        songs_new_stats = bpsynctools.get_statistics(self.new_songs_table.table_model.array_data, self.lib, 2, 1)
+        self.stats = songs_changed_stats + songs_new_stats
+        
+        # Update stat labels
+        self.update_statistics_labels()
 
     def update_song_in_songs_changed_table(self, song):
         """
@@ -521,10 +605,79 @@ class StandardSyncWindow(QtWidgets.QWidget, Ui_StandardSyncWindow):
         # inefficient call?
         self.new_songs_table.set_data(data)
 
-    def update_stats_from_index(self, index, table_source):
-        #TODO: implement
+    def update_stats_from_index(self, index, table):
+        """
+        Update the top-right statistics from a checkbox tick/untick.
+        """
+        # Check if library has been loaded; else, ignore
+        if not self.lib:
+            return
+
+        # Check if the index's column is in one of the checkbox columns; else, ignore
+        if index.column() not in table.table_model.checkbox_columns:
+            return
+        
         # Get track ID in the same row as the index in column 0
-        print(index, table_source)
+        # Signature: createIndex(row, column, ptr)
+        # ptr is quite interesting: https://doc.qt.io/qtforpython/PySide6/QtCore/QAbstractItemModel.html#PySide6.QtCore.PySide6.QtCore.QAbstractItemModel.createIndex
+        track_id_index = table.table_model.createIndex(index.row(), 0, table)
+        track_id = table.table_model.data(track_id_index, QtCore.Qt.DisplayRole)
+
+        # Look it up in the library
+        try:
+            song = self.lib.songs[track_id]
+        except KeyError:
+            # If it doesn't exist (somehow), exit early
+            logger.error(f"Couldn't find {track_id} when updating statistics?")
+            return
+
+        # Either increment or decrement counters as needed
+        # It's the case that processing is always in column index 1,
+        # and tracking is always in column index 2. This is hardcoded
+        # because I don't expect this to change anytime soon.
+
+        # Get new state of checkbox and update stats accordingly
+        new_state = table.table_model.data(index, QtCore.Qt.DisplayRole)
+        if index.column() == 1:
+            if new_state == True:
+                self.stats.num_processing += 1
+                self.stats.size_processing += song.size                
+            else:
+                self.stats.num_processing -= 1
+                self.stats.size_processing -= song.size
+        elif index.column() == 2:
+            if new_state == True:
+                self.stats.num_tracking += 1      
+            else:
+                self.stats.num_tracking -= 1
+        else:
+            logger.error(f"Tried looking up column {index.column()} for statistics updates?")
+
+        # Update statistics labels
+        self.update_statistics_labels()
+    
+    def update_statistics_labels(self):
+        """
+        Update labels from self.stats. 
+        
+        Call after the XML has been loaded or a checkbox state has changed.
+        """
+        # Check if lib.songs loaded; else, refuse.
+        if not self.lib:
+            logger.error(f"Tried to update statistics when the table wasn't ready yet?")
+            return
+        
+        # len() is constant time in CPython.
+        num_tracks = len(self.lib.songs)
+        num_songs_in_db = len(self.db_songs)
+
+        # Update all labels.
+        self.tracks_found_label.setText(f"{num_tracks} tracks found")
+        self.tracks_totalsize_label.setText(f"{bpsynctools.humanbytes(self.stats.total_size)} total size")
+        self.tracks_indatabase_label.setText(f"{num_songs_in_db} songs currently being tracked")
+        self.tracks_synccount_label.setText(f"{self.stats.num_tracking} songs to track")
+        self.tracks_copysize_label.setText(f"{bpsynctools.humanbytes(self.stats.size_processing)} to process")
+        self.tracks_copycount_label.setText(f"{self.stats.num_processing} tracks to process")
 
     def start_processing(self):
         # Get all backup paths, store into array
@@ -555,9 +708,6 @@ class StandardSyncWindow(QtWidgets.QWidget, Ui_StandardSyncWindow):
             if row[1]:  # Check for mp3 processing
                 selected_ids_processing.append(row[0])
             if row[2]:  # Check for db tracking
-                # TODO: does it make sense to filter out already-tracked songs from the table here, or in StandardWorker?
-                # i'd say the worker thread shouldn't need to have awareness of the conditions for adding a song
-                # a simple fix is to just check the already-tracked songs table and see if this id exists
                 selected_ids_tracking.append(row[0])
 
         # Create progress bar for element processing (the longest operation)
@@ -795,7 +945,6 @@ if __name__ == "__main__":
 '''
 if __name__ == "__main__":
     lib = Library('iTunes_Music_Library.xml')
-    # TODO: dict with key:value of persistent id:Song
     
     bpstat_name = datetime.now().strftime("%Y-%m-%d %H-%M-%S (new).bpstat")
     bpstat_path = os.path.join(DATA_FOLDER, bpstat_name)

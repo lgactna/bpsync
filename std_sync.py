@@ -15,9 +15,9 @@ from PySide6.QtGui import (QBrush, QColor, QConicalGradient, QCursor,
     QFont, QFontDatabase, QGradient, QIcon,
     QImage, QKeySequence, QLinearGradient, QPainter,
     QPalette, QPixmap, QRadialGradient, QTransform)
-from PySide6.QtWidgets import (QApplication, QGroupBox, QHBoxLayout, QLabel,
-    QLineEdit, QPushButton, QSizePolicy, QVBoxLayout,
-    QWidget)
+from PySide6.QtWidgets import (QApplication, QGridLayout, QGroupBox, QHBoxLayout,
+    QLabel, QLineEdit, QPushButton, QSizePolicy,
+    QVBoxLayout, QWidget)
 
 from bpsyncwidgets import SongView
 
@@ -26,13 +26,13 @@ class Ui_StandardSyncWindow(object):
         if not StandardSyncWindow.objectName():
             StandardSyncWindow.setObjectName(u"StandardSyncWindow")
         StandardSyncWindow.resize(840, 754)
-        self.verticalLayout = QVBoxLayout(StandardSyncWindow)
-        self.verticalLayout.setObjectName(u"verticalLayout")
+        self.verticalLayout_4 = QVBoxLayout(StandardSyncWindow)
+        self.verticalLayout_4.setObjectName(u"verticalLayout_4")
         self.label_2 = QLabel(StandardSyncWindow)
         self.label_2.setObjectName(u"label_2")
         self.label_2.setWordWrap(True)
 
-        self.verticalLayout.addWidget(self.label_2)
+        self.verticalLayout_4.addWidget(self.label_2)
 
         self.horizontalLayout_6 = QHBoxLayout()
         self.horizontalLayout_6.setObjectName(u"horizontalLayout_6")
@@ -42,6 +42,7 @@ class Ui_StandardSyncWindow(object):
         self.horizontalLayout_5.setObjectName(u"horizontalLayout_5")
         self.label = QLabel(StandardSyncWindow)
         self.label.setObjectName(u"label")
+        self.label.setMinimumSize(QSize(85, 0))
 
         self.horizontalLayout_5.addWidget(self.label)
 
@@ -62,6 +63,7 @@ class Ui_StandardSyncWindow(object):
         self.horizontalLayout_7.setObjectName(u"horizontalLayout_7")
         self.label_3 = QLabel(StandardSyncWindow)
         self.label_3.setObjectName(u"label_3")
+        self.label_3.setMinimumSize(QSize(85, 0))
 
         self.horizontalLayout_7.addWidget(self.label_3)
 
@@ -106,13 +108,55 @@ class Ui_StandardSyncWindow(object):
 
         self.horizontalLayout_6.addWidget(self.load_all_button)
 
+        self.groupBox_2 = QGroupBox(StandardSyncWindow)
+        self.groupBox_2.setObjectName(u"groupBox_2")
+        self.verticalLayout = QVBoxLayout(self.groupBox_2)
+        self.verticalLayout.setObjectName(u"verticalLayout")
+        self.gridLayout = QGridLayout()
+        self.gridLayout.setObjectName(u"gridLayout")
+        self.tracks_indatabase_label = QLabel(self.groupBox_2)
+        self.tracks_indatabase_label.setObjectName(u"tracks_indatabase_label")
 
-        self.verticalLayout.addLayout(self.horizontalLayout_6)
+        self.gridLayout.addWidget(self.tracks_indatabase_label, 1, 0, 1, 1)
+
+        self.tracks_copysize_label = QLabel(self.groupBox_2)
+        self.tracks_copysize_label.setObjectName(u"tracks_copysize_label")
+
+        self.gridLayout.addWidget(self.tracks_copysize_label, 2, 0, 1, 1)
+
+        self.tracks_copycount_label = QLabel(self.groupBox_2)
+        self.tracks_copycount_label.setObjectName(u"tracks_copycount_label")
+
+        self.gridLayout.addWidget(self.tracks_copycount_label, 2, 1, 1, 1)
+
+        self.tracks_found_label = QLabel(self.groupBox_2)
+        self.tracks_found_label.setObjectName(u"tracks_found_label")
+
+        self.gridLayout.addWidget(self.tracks_found_label, 0, 0, 1, 1)
+
+        self.tracks_synccount_label = QLabel(self.groupBox_2)
+        self.tracks_synccount_label.setObjectName(u"tracks_synccount_label")
+
+        self.gridLayout.addWidget(self.tracks_synccount_label, 1, 1, 1, 1)
+
+        self.tracks_totalsize_label = QLabel(self.groupBox_2)
+        self.tracks_totalsize_label.setObjectName(u"tracks_totalsize_label")
+
+        self.gridLayout.addWidget(self.tracks_totalsize_label, 0, 1, 1, 1)
+
+
+        self.verticalLayout.addLayout(self.gridLayout)
+
+
+        self.horizontalLayout_6.addWidget(self.groupBox_2)
+
+
+        self.verticalLayout_4.addLayout(self.horizontalLayout_6)
 
         self.label_8 = QLabel(StandardSyncWindow)
         self.label_8.setObjectName(u"label_8")
 
-        self.verticalLayout.addWidget(self.label_8)
+        self.verticalLayout_4.addWidget(self.label_8)
 
         self.songs_changed_table = SongView(StandardSyncWindow)
         self.songs_changed_table.setObjectName(u"songs_changed_table")
@@ -123,7 +167,7 @@ class Ui_StandardSyncWindow(object):
         self.songs_changed_table.setSizePolicy(sizePolicy)
         self.songs_changed_table.setContextMenuPolicy(Qt.CustomContextMenu)
 
-        self.verticalLayout.addWidget(self.songs_changed_table)
+        self.verticalLayout_4.addWidget(self.songs_changed_table)
 
         self.horizontalLayout_4 = QHBoxLayout()
         self.horizontalLayout_4.setObjectName(u"horizontalLayout_4")
@@ -138,12 +182,12 @@ class Ui_StandardSyncWindow(object):
         self.horizontalLayout_4.addWidget(self.songs_changed_lineedit)
 
 
-        self.verticalLayout.addLayout(self.horizontalLayout_4)
+        self.verticalLayout_4.addLayout(self.horizontalLayout_4)
 
         self.label_11 = QLabel(StandardSyncWindow)
         self.label_11.setObjectName(u"label_11")
 
-        self.verticalLayout.addWidget(self.label_11)
+        self.verticalLayout_4.addWidget(self.label_11)
 
         self.new_songs_table = SongView(StandardSyncWindow)
         self.new_songs_table.setObjectName(u"new_songs_table")
@@ -151,7 +195,7 @@ class Ui_StandardSyncWindow(object):
         self.new_songs_table.setSizePolicy(sizePolicy)
         self.new_songs_table.setContextMenuPolicy(Qt.CustomContextMenu)
 
-        self.verticalLayout.addWidget(self.new_songs_table)
+        self.verticalLayout_4.addWidget(self.new_songs_table)
 
         self.horizontalLayout_9 = QHBoxLayout()
         self.horizontalLayout_9.setObjectName(u"horizontalLayout_9")
@@ -166,7 +210,7 @@ class Ui_StandardSyncWindow(object):
         self.horizontalLayout_9.addWidget(self.new_songs_lineedit)
 
 
-        self.verticalLayout.addLayout(self.horizontalLayout_9)
+        self.verticalLayout_4.addLayout(self.horizontalLayout_9)
 
         self.groupBox = QGroupBox(StandardSyncWindow)
         self.groupBox.setObjectName(u"groupBox")
@@ -253,13 +297,13 @@ class Ui_StandardSyncWindow(object):
         self.verticalLayout_2.addWidget(self.label_17)
 
 
-        self.verticalLayout.addWidget(self.groupBox)
+        self.verticalLayout_4.addWidget(self.groupBox)
 
         self.start_button = QPushButton(StandardSyncWindow)
         self.start_button.setObjectName(u"start_button")
         self.start_button.setEnabled(True)
 
-        self.verticalLayout.addWidget(self.start_button)
+        self.verticalLayout_4.addWidget(self.start_button)
 
 
         self.retranslateUi(StandardSyncWindow)
@@ -277,6 +321,13 @@ class Ui_StandardSyncWindow(object):
         self.label_4.setText(QCoreApplication.translate("StandardSyncWindow", u"Database filepath", None))
         self.database_browse_button.setText(QCoreApplication.translate("StandardSyncWindow", u"Browse", None))
         self.load_all_button.setText(QCoreApplication.translate("StandardSyncWindow", u"Load", None))
+        self.groupBox_2.setTitle(QCoreApplication.translate("StandardSyncWindow", u"Statistics", None))
+        self.tracks_indatabase_label.setText(QCoreApplication.translate("StandardSyncWindow", u"0 songs currently being tracked", None))
+        self.tracks_copysize_label.setText(QCoreApplication.translate("StandardSyncWindow", u"0 MB to process", None))
+        self.tracks_copycount_label.setText(QCoreApplication.translate("StandardSyncWindow", u"0 tracks to process", None))
+        self.tracks_found_label.setText(QCoreApplication.translate("StandardSyncWindow", u"0 tracks found", None))
+        self.tracks_synccount_label.setText(QCoreApplication.translate("StandardSyncWindow", u"0 songs to track", None))
+        self.tracks_totalsize_label.setText(QCoreApplication.translate("StandardSyncWindow", u"0 MB total size", None))
         self.label_8.setText(QCoreApplication.translate("StandardSyncWindow", u"Songs changed", None))
         self.label_18.setText(QCoreApplication.translate("StandardSyncWindow", u"Search", None))
         self.label_11.setText(QCoreApplication.translate("StandardSyncWindow", u"New/modified songs", None))

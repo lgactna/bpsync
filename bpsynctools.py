@@ -1,19 +1,22 @@
 """
-Various convenience functions
+Various convenience functions and objects
 """
 
 import os
 import platform
 import subprocess
+import logging
+import hashlib
+import time
+
+from collections import namedtuple
 from shutil import copy2
 from datetime import datetime
 from math import log10
 from pathlib import Path
-import logging
-import hashlib
-from PySide6 import QtWidgets
-import time
+from dataclasses import dataclass
 
+from PySide6 import QtWidgets
 from pydub import AudioSegment
 from pydub.utils import mediainfo
 from eyed3 import load
@@ -23,6 +26,24 @@ import bpparse
 import models
 
 logger = logging.getLogger(__name__)
+
+# Dataclass for easy statistics use
+@dataclass
+class TableStatistics:
+    total_size: int = 0
+    num_tracking: int = 0
+    num_processing: int = 0
+    size_processing: int = 0 
+
+    def __add__(self, rhs):
+        if isinstance(rhs, self.__class__):
+            self.total_size += rhs.total_size
+            self.num_tracking += rhs.num_tracking
+            self.num_processing += rhs.num_processing
+            self.size_processing += rhs.size_processing
+            return self
+        else:
+            raise NotImplementedError("Can't add anything other than two TableStatistics")
 
 # region Processing
 
@@ -396,7 +417,7 @@ def humanbytes(B):
     TB = float(KB ** 4)  # 1,099,511,627,776
 
     if B < KB:
-        return '{0} {1}'.format(B, 'Bytes' if 0 == B > 1 else 'Byte')
+        return '{0} B'.format(B)
     elif KB <= B < MB:
         return '{0:.2f} KB'.format(B / KB)
     elif MB <= B < GB:
@@ -405,6 +426,54 @@ def humanbytes(B):
         return '{0:.2f} GB'.format(B / GB)
     elif TB <= B:
         return '{0:.2f} TB'.format(B / TB)
+
+def get_statistics(array_data, lib, tracking_column: int, processing_column: int):
+    """
+    Calculate statistics given a table's underlying data and the indexes of the tracking and processing columns.
+
+    Pass None to tracking_column or processing_column to skip.
+
+    This function assumes track IDs are available at column 0 of array_data.
+    These are used to look sizes up against `lib`.
+
+    :param array_data: The underlying table model data.
+    :param lib: The libpytunes library represented by this data.
+    :param tracking_column: The index of the column representing songs to track.
+    :param processing_column: The index of the column representing songs to process.
+    
+    Returns a named tuple with the following fields:
+    :retval total_size: Size (in bytes) of the songs represented in this table.
+    :retval num_tracking: Number of songs being tracked.
+    :retval num_processing: Number of songs being processed.
+    :retval size_processing: Size (in bytes) of songs being processed.
+    """
+    stats = TableStatistics()
+    
+    # Assert tracking_column and processing_column in range
+    num_columns = len(array_data[0])
+    if tracking_column < 1 or tracking_column >= num_columns:
+        raise RuntimeError("tracking_column out of range")
+    if processing_column < 1 or processing_column >= num_columns:
+        raise RuntimeError("processing_column out of range")
+
+    for row in array_data:
+        try:
+            track_id = row[0]
+            song = lib.songs[track_id]
+        except KeyError:
+            logger.error(f"Didn't find {track_id} in the underlying library, but it was in the table?")
+            continue
+        
+        stats.total_size += song.size
+        
+        if tracking_column and row[tracking_column] == 1:
+            stats.num_tracking += 1
+        
+        if processing_column and row[processing_column] == 1:
+            stats.num_processing += 1
+            stats.size_processing += song.size
+                
+    return stats
 
 # endregion
 

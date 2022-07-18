@@ -88,6 +88,8 @@ class CheckBoxDelegate(QtWidgets.QItemDelegate):
         check_state = self.parent().table_model.data(source_index, Qt.DisplayRole)
         check_state = 0 if check_state else 1  # Invert 1 -> 0 or 0 -> 1
 
+        # Required call to setData for data to correctly update in the table model
+        # Do not edit the underlying array directly!!
         self.parent().table_model.setData(source_index, check_state, Qt.EditRole)
 
 
@@ -270,15 +272,33 @@ class SongTableModel(QAbstractTableModel):
         return None
 
     def setData(self, index, value, role=Qt.EditRole):
+        """
+        Set data of specific cell based on the (source) index.
+
+        This can only be used for single-cell changes due to the use of QModelIndex. 
+        If you need to edit a lot of data at once, it's probably best
+        to directly edit array_data.
+
+        This explicitly emits dataChanged, which is good for tracking single-cell
+        changes to the underlying data.
+        """
+        # (Checkboxes must use this method to edit data, otherwise things will break!)
+
         # Note: index must be relative to the source model, not the proxy model!
+        # Callers are responsible for mapping it ahead of time!
         if role == Qt.EditRole and int(index.flags() & QtCore.Qt.ItemIsEditable) > 0:
+            old_data = self.array_data[index.row()][index.column()]
             self.array_data[index.row()][index.column()] = value
 
             # https://doc.qt.io/qt-6/qabstractitemmodel.html#dataChanged
             # dataChanged normally takes a top-left index, bottom-right index, and a list of flags
             # But since we're only editing one specific cell at a time, the index is the same
             # Any users of dataChanged can safely use just the first index
-            self.dataChanged.emit(index, index, ())
+            
+            # Only emit dataChanged if data has actually changed
+            if old_data != value:
+                self.dataChanged.emit(index, index, ())
+
             return True
         else:
             return False
@@ -320,6 +340,21 @@ class SongView(QTableView):
     songChanged = QtCore.Signal(libpytunes.Song)
 
     def __init__(self, *args, **kwargs):
+        """
+        Default initialization.
+
+        Note that most "real" initialization is done in setup(). This is done
+        because an instance of SongView is created in compiled Qt Creator forms,
+        so (unless we overwrite the "default" object) there's no way to pass anything
+        into it. 
+
+        To "properly" set up an instance of SongView, call setup() and set_data().
+        You may also want to call set_column_widths().
+        """
+        # TODO: To avoid the odd design pattern above, break all non-song-related
+        # functionality out into its own table class, then have SongView inherit from that.
+        # This avoids this table from doing everything all at once.
+
         # QWidget.__init__(self, *args, **kwargs)
         super().__init__()
         
@@ -329,28 +364,37 @@ class SongView(QTableView):
         # Whether or not to allow the context menu to appear. 
         # False by default; this is very narrow in use-case, and only works if
         # the track ID is in the first column.
-
+        #
         # You must still set the context menu policy to CustomContextMenu if
-        # it isn't already set.
+        # it isn't already set. This can be done in Qt Creator.
         self.context_menu_enabled = False
 
-    def setup(self, headers, data, box_columns, filter_columns, row_height=20):
+        # Default states
+        self.headers = []
+        self.box_columns = []
+        self.filter_columns = []
+
+    def setup(self, headers: list[str], box_columns: list[int], filter_columns: list[int], row_height: int = 20):
         """
-        Initializes the table.
+        Initializes the table's layout and table model.
+
+        Ideally, this shoud only be called once per instance.
+        It is possible to change the table layout with successive calls
+        to setup() without needing to replace the SongView. (This does
+        create new references for everything.)
         
         :param headers: An array of strings to set the headers for.
-        :param data: A 2D array of table data. Horizontal dimensions must be equivalent to `headers`.
         :param boxes: Zero-indexed array of indices to replace with the CheckBoxDelegate.
         :param filter_on: Array of indices to sort on.
         :param row_height: Height of all rows.
         """
         # Arguments for table
         self.headers = headers
-        data = data  # Only used on initialization
         self.box_columns = box_columns
         self.filter_columns = filter_columns
 
         # Create main (hidden) model
+        data = []  # By default, have just an empty table
         self.table_model = SongTableModel(data, self.headers, self.box_columns, self)
 
         # Create proxy model
@@ -390,7 +434,9 @@ class SongView(QTableView):
 
     def set_data(self, data):
         """
-        Update underlying data and emit `layoutChanged()`.
+        Completely change underlying data and emit layoutChanged().
+
+        This *will not* caise SongTableModel to emit dataChanged().
 
         :param data: A 2D array of table data. Horizontal dimensions must be equivalent to `headers`.
         """
@@ -666,6 +712,8 @@ class SongWorker(QtCore.QRunnable):
         if(not os.path.isfile(os.path.join(self.data_directory, "songs.db"))):
             models.create_db()
         models.add_libpy_songs(song_arr)
+        # BUG: previously ignored songs that are now being tracked aren't removed from ignored database
+        # BUG: also, i think things crash if you delete songs from itunes
         models.add_ignored_ids(self.ignore_ids)
 
 class StandardWorker(SongWorker):
@@ -712,6 +760,7 @@ class StandardWorker(SongWorker):
         # use the already-calculated values for everything
         # ["Track ID", "Title", "Artist", "Album", "Base plays", "XML plays", "BP plays", "Delta", "New playcount", "Persistent ID"]
         with models.Session() as session:
+            # Update existing entries from the songs_changed_table
             for row in self.songs_changed_data:            
                 track_id = row[0]
                 xml_plays = row[5]
@@ -733,7 +782,7 @@ class StandardWorker(SongWorker):
                 # write out to bpstat
                 bpsynctools.add_to_bpstat(self.lib.songs[track_id], self.bpstat_prefix, self.bpstat_path)
                 bpsynctools.add_to_exportimport(db_song, self.exportimport_path)
-
+                
             # commit changes
             session.commit()
 
