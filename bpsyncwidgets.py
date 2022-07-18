@@ -110,7 +110,9 @@ class CheckBoxHeader(QtWidgets.QHeaderView):
         """
         QtWidgets.QHeaderView.__init__(self, orientation, parent)
         # super(CheckBoxHeader, self).__init__(orientation)
-        # TODO: improve clarity of this variable/design
+
+        # This represents the current state of each checkbox header,
+        # where the key is its column index and the value is a boolean
         self.checkbox_columns = {}
         for index in checkbox_columns:
             self.checkbox_columns[index] = True
@@ -712,8 +714,7 @@ class SongWorker(QtCore.QRunnable):
         if(not os.path.isfile(os.path.join(self.data_directory, "songs.db"))):
             models.create_db()
         models.add_libpy_songs(song_arr)
-        # BUG: previously ignored songs that are now being tracked aren't removed from ignored database
-        # BUG: also, i think things crash if you delete songs from itunes
+        # BUG: also, i think things crash if you delete songs from itunes (since they can't be looked up in library objects anymore)
         models.add_ignored_ids(self.ignore_ids)
 
 class StandardWorker(SongWorker):

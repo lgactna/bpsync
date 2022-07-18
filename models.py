@@ -10,6 +10,7 @@ in the future, if it's ever necessary to make this more robust:
 
 import logging
 import os
+import hashlib
 from pathlib import Path
 
 from sqlalchemy import Table, Column, Integer, String, Boolean, Text
@@ -87,7 +88,7 @@ class StoredSong(Base):
         delta = self.get_delta(xml_pc, bpstat_pc)
         self.last_playcount += delta
 
-    def update_from_libpy_song(self, libpysong, update_playcount):
+    def update_from_libpy_song(self, libpysong):
         """
         Update a StoredSong to reflect the contents of a libpytunes Song object.
 
@@ -219,8 +220,12 @@ def create_db():
 def add_libpy_songs(songs):
     """Commit an array of libpytunes Song objects to the database."""
     # If playcount field isn't present, it's implied to be 0
+
+    logger.info(f"Adding {len(songs)} to database...")
+
     new_songs = []
     for song in songs:
+        logger.info(f"Creating StoredSong object for {song.persistent_id=}...")
         new_song = StoredSong()
 
         new_song.update_from_libpy_song(song)
@@ -228,8 +233,11 @@ def add_libpy_songs(songs):
         new_songs.append(new_song)
 
     with Session() as session:
+        logger.info("Saving new database elements...")
         session.bulk_save_objects(new_songs)
         session.commit()
+
+    logger.info("New songs committed.")
 
 def add_ignored_ids(song_ids):
     """
@@ -240,6 +248,7 @@ def add_ignored_ids(song_ids):
                  for song_id in song_ids]
 
     with Session() as session:
+        logger.debug(f"Saving IgnoredSong objects...")
         session.bulk_save_objects(ignored_song_ids)
         session.commit()
 
@@ -250,9 +259,17 @@ def commit_changes():
 
 def calculate_file_hash(filepath) -> str:
     # https://stackoverflow.com/questions/16874598/how-do-i-calculate-the-md5-checksum-of-a-file-in-python
-    with open(filepath, "rb") as f:
-        file_hash = hashlib.blake2b()
-        while chunk := f.read(8192):
-            file_hash.update(chunk)
+
+    try:
+        with open(filepath, "rb") as f:
+            file_hash = hashlib.blake2b()
+            while chunk := f.read(8192):
+                file_hash.update(chunk)
+    except FileNotFoundError:
+        # Return a placeholder hash.
+        # If the file doesn't exist for some reason, but the user
+        # still explicitly requested to track it, then we can
+        # just put a placeholder hash here instead.
+        return "FILE_NOT_AVAILABLE"
 
     return file_hash.hexdigest() # len = 128

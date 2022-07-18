@@ -485,44 +485,13 @@ class StandardSyncWindow(QtWidgets.QWidget, Ui_StandardSyncWindow):
                               "Paths not defined")
             return
 
-        # Check if filepaths are valid - validation done here for direct access to error window
-        # try generating the libpytunes library from specified XML
-        # TODO: move into completely separate function (prevents partial loading of data into self.lib, etc.)
-        try:
-            self.lib = Library(xml_path)
-        except xml.parsers.expat.ExpatError as e:
-            bpsynctools.show_error_window("Invalid XML file!",
-                                f"Couldn't parse XML file (if it is one) - {e}",
-                                "Invalid XML file")
-            return
-        except FileNotFoundError:
-            bpsynctools.show_error_window("File not found!",
-                                "The entered path doesn't appear to exist.",
-                                "Invalid XML filepath")
-            return
-
-        ## try generating bpstat library
-        self.bpsongs = bpparse.get_songs(bpstat_path)
-        if not self.bpsongs:
-            bpsynctools.show_error_window(".bpstat malformed!",
-                                "The program wasn't able to find any valid songs in this file.",
-                                "Invalid .bpstat file")
-            return
-
-        ## try getting elements from db
-        try:
-            models.initialize_engine(database_path)
-        except Exception as e:
-            bpsynctools.show_error_window("Something went wrong while connecting to the database!",
-                               str(e),
-                               "Database error")
-            return
-        with models.Session() as session:
-            self.db_songs = session.query(models.StoredSong).all()
-        if not self.db_songs:
-            bpsynctools.show_error_window("No songs in database!",
-                       "A database query yielded no results.",
-                       "Database error")
+        # call helper function for getting data from files
+        # this function raises error windows on its end
+        file_data = bpsynctools.get_std_data(xml_path, bpstat_path, database_path)
+        if file_data:
+            self.lib, self.bpsongs, self.db_songs = file_data
+        else:
+            # return early
             return
 
         # call helper function

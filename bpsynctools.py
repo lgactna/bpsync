@@ -8,6 +8,7 @@ import subprocess
 import logging
 import hashlib
 import time
+import xml
 
 from collections import namedtuple
 from shutil import copy2
@@ -21,6 +22,7 @@ from pydub import AudioSegment
 from pydub.utils import mediainfo
 from eyed3 import load
 import sqlalchemy.orm.exc
+import libpytunes
 
 import bpparse
 import models
@@ -284,7 +286,6 @@ def first_sync_array_from_libpysongs(songs):
 
     Assumes copying and tracking should be enabled.
     """
-    # TODO: Decide on using *(length) or Y/N(length-length)
     headers = ["Track ID", "Copy?", "Track?", "Title", "Artist", "Album", "Plays", "Trimmed?", "Volume%", "Filepath"]
 
     data = []
@@ -449,11 +450,15 @@ def get_statistics(array_data, lib, tracking_column: int, processing_column: int
     """
     stats = TableStatistics()
     
+    # Assert that there actually is array_data; else, just return stats which defaults to 0
+    if not array_data:
+        return stats
+
     # Assert tracking_column and processing_column in range
     num_columns = len(array_data[0])
-    if tracking_column < 1 or tracking_column >= num_columns:
+    if tracking_column and (tracking_column < 1 or tracking_column >= num_columns):
         raise RuntimeError("tracking_column out of range")
-    if processing_column < 1 or processing_column >= num_columns:
+    if processing_column and (processing_column < 1 or processing_column >= num_columns):
         raise RuntimeError("processing_column out of range")
 
     for row in array_data:
@@ -486,5 +491,53 @@ def show_error_window(text, informative_text, title):
     msg.setInformativeText(informative_text)
     msg.setWindowTitle(title)
     msg.exec()
+
+def get_std_data(xml_path, bpstat_path, database_path):
+    """
+    Get the standard sync data from the specified filepaths.
+
+    :param xml_path: Path to an exported XML.
+    :param bpstat_path: Path to the newest bpstat file.
+    :param database_bath: Path to the program database.
+    """
+    # try generating the libpytunes library from specified XML
+    try:
+        lib = libpytunes.Library(xml_path)
+    except xml.parsers.expat.ExpatError as e:
+        show_error_window("Invalid XML file!",
+                            f"Couldn't parse XML file (if it is one) - {e}",
+                            "Invalid XML file")
+        return
+    except FileNotFoundError:
+        show_error_window("File not found!",
+                            "The entered path doesn't appear to exist.",
+                            "Invalid XML filepath")
+        return
+
+    ## try generating bpstat library
+    bpsongs = bpparse.get_songs(bpstat_path)
+    if not bpsongs:
+        show_error_window(".bpstat malformed!",
+                            "The program wasn't able to find any valid songs in this file.",
+                            "Invalid .bpstat file")
+        return
+
+    ## try getting elements from db
+    try:
+        models.initialize_engine(database_path)
+    except Exception as e:
+        show_error_window("Something went wrong while connecting to the database!",
+                            str(e),
+                            "Database error")
+        return
+    with models.Session() as session:
+        db_songs = session.query(models.StoredSong).all()
+    if not db_songs:
+        show_error_window("No songs in database!",
+                    "A database query yielded no results.",
+                    "Database error")
+        return
+    
+    return lib, bpsongs, db_songs
 
 # endregion
