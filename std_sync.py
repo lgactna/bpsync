@@ -15,9 +15,9 @@ from PySide6.QtGui import (QBrush, QColor, QConicalGradient, QCursor,
     QFont, QFontDatabase, QGradient, QIcon,
     QImage, QKeySequence, QLinearGradient, QPainter,
     QPalette, QPixmap, QRadialGradient, QTransform)
-from PySide6.QtWidgets import (QApplication, QGridLayout, QGroupBox, QHBoxLayout,
-    QLabel, QLineEdit, QPushButton, QSizePolicy,
-    QVBoxLayout, QWidget)
+from PySide6.QtWidgets import (QApplication, QCheckBox, QGridLayout, QGroupBox,
+    QHBoxLayout, QLabel, QLineEdit, QPushButton,
+    QSizePolicy, QVBoxLayout, QWidget)
 
 from bpsyncwidgets import SongView
 
@@ -26,13 +26,13 @@ class Ui_StandardSyncWindow(object):
         if not StandardSyncWindow.objectName():
             StandardSyncWindow.setObjectName(u"StandardSyncWindow")
         StandardSyncWindow.resize(840, 754)
-        self.verticalLayout_4 = QVBoxLayout(StandardSyncWindow)
-        self.verticalLayout_4.setObjectName(u"verticalLayout_4")
+        self.verticalLayout_5 = QVBoxLayout(StandardSyncWindow)
+        self.verticalLayout_5.setObjectName(u"verticalLayout_5")
         self.label_2 = QLabel(StandardSyncWindow)
         self.label_2.setObjectName(u"label_2")
         self.label_2.setWordWrap(True)
 
-        self.verticalLayout_4.addWidget(self.label_2)
+        self.verticalLayout_5.addWidget(self.label_2)
 
         self.horizontalLayout_6 = QHBoxLayout()
         self.horizontalLayout_6.setObjectName(u"horizontalLayout_6")
@@ -103,10 +103,20 @@ class Ui_StandardSyncWindow(object):
 
         self.horizontalLayout_6.addLayout(self.verticalLayout_3)
 
+        self.verticalLayout_4 = QVBoxLayout()
+        self.verticalLayout_4.setObjectName(u"verticalLayout_4")
         self.load_all_button = QPushButton(StandardSyncWindow)
         self.load_all_button.setObjectName(u"load_all_button")
 
-        self.horizontalLayout_6.addWidget(self.load_all_button)
+        self.verticalLayout_4.addWidget(self.load_all_button)
+
+        self.calc_hashes_checkbox = QCheckBox(StandardSyncWindow)
+        self.calc_hashes_checkbox.setObjectName(u"calc_hashes_checkbox")
+
+        self.verticalLayout_4.addWidget(self.calc_hashes_checkbox)
+
+
+        self.horizontalLayout_6.addLayout(self.verticalLayout_4)
 
         self.groupBox_2 = QGroupBox(StandardSyncWindow)
         self.groupBox_2.setObjectName(u"groupBox_2")
@@ -151,12 +161,12 @@ class Ui_StandardSyncWindow(object):
         self.horizontalLayout_6.addWidget(self.groupBox_2)
 
 
-        self.verticalLayout_4.addLayout(self.horizontalLayout_6)
+        self.verticalLayout_5.addLayout(self.horizontalLayout_6)
 
         self.label_8 = QLabel(StandardSyncWindow)
         self.label_8.setObjectName(u"label_8")
 
-        self.verticalLayout_4.addWidget(self.label_8)
+        self.verticalLayout_5.addWidget(self.label_8)
 
         self.songs_changed_table = SongView(StandardSyncWindow)
         self.songs_changed_table.setObjectName(u"songs_changed_table")
@@ -167,7 +177,7 @@ class Ui_StandardSyncWindow(object):
         self.songs_changed_table.setSizePolicy(sizePolicy)
         self.songs_changed_table.setContextMenuPolicy(Qt.CustomContextMenu)
 
-        self.verticalLayout_4.addWidget(self.songs_changed_table)
+        self.verticalLayout_5.addWidget(self.songs_changed_table)
 
         self.horizontalLayout_4 = QHBoxLayout()
         self.horizontalLayout_4.setObjectName(u"horizontalLayout_4")
@@ -182,12 +192,12 @@ class Ui_StandardSyncWindow(object):
         self.horizontalLayout_4.addWidget(self.songs_changed_lineedit)
 
 
-        self.verticalLayout_4.addLayout(self.horizontalLayout_4)
+        self.verticalLayout_5.addLayout(self.horizontalLayout_4)
 
         self.label_11 = QLabel(StandardSyncWindow)
         self.label_11.setObjectName(u"label_11")
 
-        self.verticalLayout_4.addWidget(self.label_11)
+        self.verticalLayout_5.addWidget(self.label_11)
 
         self.new_songs_table = SongView(StandardSyncWindow)
         self.new_songs_table.setObjectName(u"new_songs_table")
@@ -195,7 +205,7 @@ class Ui_StandardSyncWindow(object):
         self.new_songs_table.setSizePolicy(sizePolicy)
         self.new_songs_table.setContextMenuPolicy(Qt.CustomContextMenu)
 
-        self.verticalLayout_4.addWidget(self.new_songs_table)
+        self.verticalLayout_5.addWidget(self.new_songs_table)
 
         self.horizontalLayout_9 = QHBoxLayout()
         self.horizontalLayout_9.setObjectName(u"horizontalLayout_9")
@@ -210,7 +220,7 @@ class Ui_StandardSyncWindow(object):
         self.horizontalLayout_9.addWidget(self.new_songs_lineedit)
 
 
-        self.verticalLayout_4.addLayout(self.horizontalLayout_9)
+        self.verticalLayout_5.addLayout(self.horizontalLayout_9)
 
         self.groupBox = QGroupBox(StandardSyncWindow)
         self.groupBox.setObjectName(u"groupBox")
@@ -297,13 +307,13 @@ class Ui_StandardSyncWindow(object):
         self.verticalLayout_2.addWidget(self.label_17)
 
 
-        self.verticalLayout_4.addWidget(self.groupBox)
+        self.verticalLayout_5.addWidget(self.groupBox)
 
         self.start_button = QPushButton(StandardSyncWindow)
         self.start_button.setObjectName(u"start_button")
         self.start_button.setEnabled(True)
 
-        self.verticalLayout_4.addWidget(self.start_button)
+        self.verticalLayout_5.addWidget(self.start_button)
 
 
         self.retranslateUi(StandardSyncWindow)
@@ -321,6 +331,7 @@ class Ui_StandardSyncWindow(object):
         self.label_4.setText(QCoreApplication.translate("StandardSyncWindow", u"Database filepath", None))
         self.database_browse_button.setText(QCoreApplication.translate("StandardSyncWindow", u"Browse", None))
         self.load_all_button.setText(QCoreApplication.translate("StandardSyncWindow", u"Load", None))
+        self.calc_hashes_checkbox.setText(QCoreApplication.translate("StandardSyncWindow", u"Calculate file hashes", None))
         self.groupBox_2.setTitle(QCoreApplication.translate("StandardSyncWindow", u"Statistics", None))
         self.tracks_indatabase_label.setText(QCoreApplication.translate("StandardSyncWindow", u"0 songs currently being tracked", None))
         self.tracks_copysize_label.setText(QCoreApplication.translate("StandardSyncWindow", u"0 MB to process", None))

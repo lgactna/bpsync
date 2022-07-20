@@ -301,12 +301,13 @@ def first_sync_array_from_libpysongs(songs):
 
     return data
 
-def standard_sync_arrays_from_data(library, bpstat_songs):
+def standard_sync_arrays_from_data(library, bpstat_songs, calculate_file_hashes):
     """
     Creates the two 2D arrays used to create the standard sync tables.
 
     :param library: A dictionary of track IDs to libpytunes Song objects.
     :param bpstat_songs: A list of BPSong objects.
+    :param calculate_file_hashes: Whether to calculate file hashes (a long operation) to determine if reprocessing is needed.
 
     Occurs in about four steps, two of which are done in the UI function:
     - Start by trying to load/open all three files. Raise RuntimeError (or another exception) if fail.
@@ -372,11 +373,14 @@ def standard_sync_arrays_from_data(library, bpstat_songs):
         # Default to not drawing checkbox by default. -1 indicates "no checkbox"
         # to the underlying widgets. 
         reprocess = -1
-        if stored_song.needs_reprocessing(song):
+        if stored_song.needs_reprocessing(song, calculate_file_hashes):
             # This StoredSong method takes in a libpytunes Song object and compares the
             # relevant fields to see if reprocessing is needed. If it returns true,
             # which occurs if ANY qualifying field has changed, then set the checkbox
             # to equal 1.
+            #
+            # calculate_file_hashes is an optional argument that skips calculating file
+            # hashes, since it is a long operation.
             reprocess = 1
         
         existing_songs_rows.append([track_id, reprocess, song.name, song.artist, song.album, stored_song.last_playcount, play_count,

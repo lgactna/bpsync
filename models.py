@@ -132,7 +132,7 @@ class StoredSong(Base):
         self.movement_number = libpysong.movement_number
         self.movement_count = libpysong.movement_count
 
-    def needs_reprocessing(self, libpysong):
+    def needs_reprocessing(self, libpysong, calculate_file_hash=False):
         """
         Takes in a libpysong and checks if the relevant fields are equal.
         
@@ -167,11 +167,14 @@ class StoredSong(Base):
         or self.work != libpysong.work \
         or self.movement_name != libpysong.movement_name \
         or self.movement_number != libpysong.movement_number \
-        or self.movement_count != libpysong.movement_count \
-        or self.blake2b_hash != calculate_file_hash(libpysong.location):
+        or self.movement_count != libpysong.movement_count:
             return True
-        else:
-            return False
+        
+        # Only try checking for file hash if explicitly requested
+        if calculate_file_hash and self.blake2b_hash != calculate_file_hash(libpysong.location):
+            return True
+        
+        return False
 
         # Not supported
         # or self.equalizer != libpysong.equalizer \

@@ -13,7 +13,7 @@
   <property name="windowTitle">
    <string>Standard Sync</string>
   </property>
-  <layout class="QVBoxLayout" name="verticalLayout_4">
+  <layout class="QVBoxLayout" name="verticalLayout_5">
    <item>
     <widget class="QLabel" name="label_2">
      <property name="text">
@@ -106,11 +106,22 @@
       </layout>
      </item>
      <item>
-      <widget class="QPushButton" name="load_all_button">
-       <property name="text">
-        <string>Load</string>
-       </property>
-      </widget>
+      <layout class="QVBoxLayout" name="verticalLayout_4">
+       <item>
+        <widget class="QPushButton" name="load_all_button">
+         <property name="text">
+          <string>Load</string>
+         </property>
+        </widget>
+       </item>
+       <item>
+        <widget class="QCheckBox" name="calc_hashes_checkbox">
+         <property name="text">
+          <string>Calculate file hashes</string>
+         </property>
+        </widget>
+       </item>
+      </layout>
      </item>
      <item>
       <widget class="QGroupBox" name="groupBox_2">

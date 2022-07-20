@@ -494,8 +494,11 @@ class StandardSyncWindow(QtWidgets.QWidget, Ui_StandardSyncWindow):
             # return early
             return
 
+        # check if file hashing is needed
+        calculate_hashes = self.calc_hashes_checkbox.isChecked()
+
         # call helper function
-        existing_data, new_data = bpsynctools.standard_sync_arrays_from_data(self.lib.songs, self.bpsongs)
+        existing_data, new_data = bpsynctools.standard_sync_arrays_from_data(self.lib.songs, self.bpsongs, calculate_hashes)
 
         self.songs_changed_table.set_data(existing_data)
         self.new_songs_table.set_data(new_data)
@@ -534,8 +537,8 @@ class StandardSyncWindow(QtWidgets.QWidget, Ui_StandardSyncWindow):
 
         # Generate a "fake" first_sync_array from the song
         temp_lib = {song.track_id: song}
-        # BUG: the time is completely broken 
-        # BUG: this breaks the statistics because dataChanged isn't emitted ec
+        # BUG: the time is completely broken (doesn't return time/struct_time)
+        # BUG: this breaks the statistics because dataChanged isn't emitted
         existing_songs_rows, _ = bpsynctools.standard_sync_arrays_from_data(temp_lib, self.bpsongs)
 
         # Update row in data
