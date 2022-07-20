@@ -495,7 +495,7 @@ class StandardSyncWindow(QtWidgets.QWidget, Ui_StandardSyncWindow):
             return
 
         # call helper function
-        existing_data, new_data = bpsynctools.standard_sync_arrays_from_data(self.lib, self.bpsongs)
+        existing_data, new_data = bpsynctools.standard_sync_arrays_from_data(self.lib.songs, self.bpsongs)
 
         self.songs_changed_table.set_data(existing_data)
         self.new_songs_table.set_data(new_data)
@@ -534,10 +534,12 @@ class StandardSyncWindow(QtWidgets.QWidget, Ui_StandardSyncWindow):
 
         # Generate a "fake" first_sync_array from the song
         temp_lib = {song.track_id: song}
-        new_data = bpsynctools.first_sync_array_from_libpysongs(temp_lib)
+        # BUG: the time is completely broken 
+        # BUG: this breaks the statistics because dataChanged isn't emitted ec
+        existing_songs_rows, _ = bpsynctools.standard_sync_arrays_from_data(temp_lib, self.bpsongs)
 
         # Update row in data
-        data[target_index] = new_data[0]
+        data[target_index] = existing_songs_rows[0]
 
         # Tell the model to update
         # inefficient call?
@@ -565,7 +567,7 @@ class StandardSyncWindow(QtWidgets.QWidget, Ui_StandardSyncWindow):
 
         # Generate a "fake" first_sync_array from the song
         temp_lib = {song.track_id: song}
-        _, new_data = bpsynctools.standard_sync_array_from_data(temp_lib, self.bpsongs)
+        new_data = bpsynctools.first_sync_array_from_libpysongs(temp_lib)
 
         # Update row in data
         data[target_index] = new_data[0]

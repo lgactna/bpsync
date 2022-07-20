@@ -339,7 +339,7 @@ def standard_sync_arrays_from_data(library, bpstat_songs):
     # start checking in both
     new_songs = {}
     existing_songs_rows = []
-    for track_id, song in library.songs.items():
+    for track_id, song in library.items():
         # check if the song exists in both the bpstat and the database
         try:
             stored_song = session.query(models.StoredSong).filter(models.StoredSong.persistent_id==song.persistent_id).scalar()
