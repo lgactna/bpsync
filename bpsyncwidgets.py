@@ -713,16 +713,19 @@ class SongWorker(QtCore.QRunnable):
 
             bpsynctools.copy_and_process_song(song)
 
-        self.signal_connection.songStartedProcessing.emit(len(self.processing_ids), f"Processing complete - you can close this window.")
+        # Setting the progress window number progress to max disables the cancel button
+        self.signal_connection.songStartedProcessing.emit(len(self.processing_ids), f"Writing database - this may take some time")
 
         # Create/write database with new songs
         models.initialize_engine(self.data_directory)
         # Only create underlying tables if the file clearly does not exist yet
         if(not os.path.isfile(os.path.join(self.data_directory, "songs.db"))):
             models.create_db()
+
         models.add_libpy_songs(song_arr)
-        # BUG: also, i think things crash if you delete songs from itunes (since they can't be looked up in library objects anymore)
         models.add_ignored_ids(self.ignore_ids)
+
+        self.signal_connection.songStartedProcessing.emit(len(self.processing_ids), f"Processing complete - you can close this window.")
 
 class StandardWorker(SongWorker):
     """
@@ -743,8 +746,8 @@ class StandardWorker(SongWorker):
     """
     # yuck lol
     # is there a better way to arrange these parameters? does a cohesive object make sense here?
-    def __init__(self, lib, processing_ids, tracking_ids, mp3_target_directory, data_directory, bpstat_prefix, backup_directory, backup_paths, songs_changed_data):
-        super().__init__(lib, processing_ids, tracking_ids, mp3_target_directory, data_directory, bpstat_prefix)
+    def __init__(self, lib, processing_ids, tracking_ids, ignore_ids, mp3_target_directory, data_directory, bpstat_prefix, backup_directory, backup_paths, songs_changed_data):
+        super().__init__(lib, processing_ids, tracking_ids, ignore_ids, mp3_target_directory, data_directory, bpstat_prefix)
         self.backup_directory = backup_directory
         self.backup_paths = backup_paths
         self.songs_changed_data = songs_changed_data

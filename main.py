@@ -663,21 +663,31 @@ class StandardSyncWindow(QtWidgets.QWidget, Ui_StandardSyncWindow):
         bpstat_prefix = self.bpsongs[0].get_bpstat_prefix()
 
         # Get track IDs of selected items for processing/tracking by iterating over table widget's model data
+        # BUG: this does not account for songs to process in the existing songs table
+        # BUG: this also does not include the ignored_ids_tracking field in the first time sync window
         new_data = self.new_songs_table.table_model.array_data
+        existing_data = self.songs_changed_table.table_model.array_data
         selected_ids_processing = []
         selected_ids_tracking = []
+        ignored_ids_tracking = []
         for row in new_data:
             if row[1]:  # Check for mp3 processing
                 selected_ids_processing.append(row[0])
             if row[2]:  # Check for db tracking
                 selected_ids_tracking.append(row[0])
+            else:
+                song = self.lib.songs[row[0]]
+                ignored_ids_tracking.append(song.persistent_id)
+        for row in existing_data:
+            if row[1]:
+                selected_ids_process.append(row[0])
 
         # Create progress bar for element processing (the longest operation)
         progress_window = bpsyncwidgets.ProgressWindow(len(selected_ids_processing))
         progress_window.show()
 
         # Start processing thread
-        song_worker = bpsyncwidgets.StandardWorker(self.lib, selected_ids_processing, selected_ids_tracking,
+        song_worker = bpsyncwidgets.StandardWorker(self.lib, selected_ids_processing, selected_ids_tracking, ignored_ids_tracking,
                                                     mp3_target_directory, data_directory, bpstat_prefix, backup_directory, backup_paths,
                                                     self.songs_changed_table.table_model.array_data)
         song_worker.signal_connection.songStartedProcessing.connect(lambda progress_val, song_string: progress_window.updateFields(progress_val, song_string))
