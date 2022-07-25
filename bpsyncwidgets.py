@@ -226,6 +226,10 @@ class SongTableModel(QAbstractTableModel):
     https://stackoverflow.com/questions/1849337/how-can-i-add-a-user-editable-checkbox-in-qtableview-using-only-qstandarditemmod
     """
 
+    # Signal emitted only when data "actually" changes. i.e.
+    # the value is different than it was before the setData() call.
+    dataActuallyChanged = QtCore.Signal(QtCore.QModelIndex)
+
     def __init__(self, data, headers, checkbox_columns, parent=None):
         """
         :param data: 2D array of data
@@ -244,8 +248,8 @@ class SongTableModel(QAbstractTableModel):
         if index.column() in self.checkbox_columns:
             # return QAbstractTableModel.flags(index) | Qt.ItemIsUserCheckable
             if index.data() == -1:
-                # This is how individual rows can bet set to not have a checkbox
-                # All models must agree that "-1" is 
+                # This is how individual rows can be set to not have a checkbox
+                # All models must agree that "-1" is "no checkbox" 
                 return Qt.ItemIsEnabled | Qt.ItemIsSelectable
             else:
                 return Qt.ItemIsEnabled | Qt.ItemIsSelectable | Qt.ItemIsEditable
@@ -297,9 +301,12 @@ class SongTableModel(QAbstractTableModel):
             # But since we're only editing one specific cell at a time, the index is the same
             # Any users of dataChanged can safely use just the first index
             
-            # Only emit dataChanged if data has actually changed
+            self.dataChanged.emit(index, index, ())
             if old_data != value:
-                self.dataChanged.emit(index, index, ())
+                # Only emit dataActuallyChanged if data has actually changed.
+                # Used in statistics, but the original dataChanged is available
+                # if needed.
+                self.dataActuallyChanged.emit(index)
 
             return True
         else:
@@ -438,7 +445,7 @@ class SongView(QTableView):
         """
         Completely change underlying data and emit layoutChanged().
 
-        This *will not* caise SongTableModel to emit dataChanged().
+        This *will not* cause SongTableModel to emit dataChanged().
 
         :param data: A 2D array of table data. Horizontal dimensions must be equivalent to `headers`.
         """
@@ -907,7 +914,7 @@ class SongInfoDialog(QtWidgets.QDialog, Ui_SongInfoDialog):
         if song.year:
             self.yearSpinBox.setValue(song.year)
         else:
-            self.yearSpinBox.setSpecialValueText("")
+            self.yearSpinBox.setValue(self.yearSpinBox.minimum())
         self.genreLineEdit.setText(song.genre)
 
         self.trackIDLineEdit.setText(str(song.track_id))
@@ -927,58 +934,82 @@ class SongInfoDialog(QtWidgets.QDialog, Ui_SongInfoDialog):
         self.sampleRateLabel.setText(str(song.sample_rate))
 
         # Column 2
+
+        # SpecialValueText only appears if the spinbox is set to its minimum.
+        # (The same applies for date spinboxes.)
+        # Notes:
+        # - The minima have been set to -1 where appropriate in Qt Designer.
+        # - The maxima must be set explicitly and dynamically here.
+        # - The special value texts have been set in Qt Designer.
+        # - By convention, -1 should be the value used. But check the minimum anyways.
+
+        self.startTimeSpinBox.setMaximum(song.total_time)
         if song.start_time:
             self.startTimeSpinBox.setValue(song.start_time)
         else:
-            self.yearSpinBox.setSpecialValueText("(start)")
-        self.startTimeSpinBox.setMinimum(0)
-        self.startTimeSpinBox.setMaximum(song.total_time)
+            self.startTimeSpinBox.setValue(self.startTimeSpinBox.minimum())
+
+        self.stopTimeSpinBox.setMaximum(song.total_time)
         if song.stop_time:
             self.stopTimeSpinBox.setValue(song.stop_time)
         else:
-            self.yearSpinBox.setSpecialValueText("(end)")
-        self.stopTimeSpinBox.setMinimum(0)
-        self.stopTimeSpinBox.setMaximum(song.total_time)
+            self.stopTimeSpinBox.setValue(self.stopTimeSpinBox.minimum())
+        
         if song.disc_number:
             self.discNumberSpinBox.setValue(song.disc_number)
         else:
-            self.discNumberSpinBox.setSpecialValueText("(not set)")
+            self.discNumberSpinBox.setValue(self.discNumberSpinBox.minimum())
+        
         if song.disc_count:
             self.discCountSpinBox.setValue(song.disc_count)
         else:
-            self.discCountSpinBox.setSpecialValueText("(not set)")
+            self.discCountSpinBox.setValue(self.discCountSpinBox.minimum())
+
         if song.track_number:
             self.trackNumberSpinBox.setValue(song.track_number)
         else:
-            self.trackNumberSpinBox.setSpecialValueText("(not set)")
+            self.trackNumberSpinBox.setValue(self.trackNumberSpinBox.minimum())
+
         if song.track_count:
             self.trackCountSpinBox.setValue(song.track_count)
         else:
-            self.trackCountSpinBox.setSpecialValueText("(not set)")
+            self.trackCountSpinBox.setValue(self.trackCountSpinBox.minimum())
+
         self.ratingComputedCheckBox.setChecked(song.rating_computed if song.rating_computed else False)
         self.compilationCheckBox.setChecked(song.compilation if song.compilation else False)
 
         # Column 3
         self.volumeAdjustmentSpinBox.setValue(song.volume_adjustment if song.volume_adjustment else 0)
         self.playCountSpinBox.setValue(song.play_count if song.play_count else 0)
+        
         if song.lastplayed:
-            last_played_qtime = QtCore.QDateTime.fromSecsSinceEpoch(time.mktime(song.lastplayed))
+            # Construct a QDateTime from the first 7 fields of a time struct
+            last_played_qtime = QtCore.QDateTime(*song.lastplayed[0:7], QtCore.Qt.UTC)
+            # Note: there's no need to convert a qdatetime to local time explicitly.
+            # The widget will show local time as expected.
             self.lastPlayedDateTimeEdit.setDateTime(last_played_qtime)
         else:
-            self.lastPlayedDateTimeEdit.setSpecialValueText("(never played)")
+            self.lastPlayedDateTimeEdit.setDateTime(self.lastPlayedDateTimeEdit.minimumDateTime())
+
         if song.skip_count:
             self.skipCountSpinBox.setValue(song.skip_count)
         else:
             self.skipCountSpinBox.setValue(0)
+        
         if song.skip_date:
-            last_skipped_qtime = QtCore.QDateTime.fromSecsSinceEpoch(time.mktime(song.skip_date))
+            # Construct a QDateTime from the first 7 fields of a time struct
+            last_skipped_qtime = QtCore.QDateTime(*song.skip_date[0:7], QtCore.Qt.UTC)
+            # Note: there's no need to convert a qdatetime to local time explicitly.
+            # The widget will show local time as expected.
             self.lastSkippedDateTimeEdit.setDateTime(last_skipped_qtime)
         else:
-            self.lastSkippedDateTimeEdit.setSpecialValueText("(never skipped)")
+            self.lastPlayedDateTimeEdit.setDateTime(self.lastPlayedDateTimeEdit.minimumDateTime())
+        
         if song.album_rating:
             self.albumRatingSpinBox.setValue(song.album_rating)
         else:
-            self.albumRatingSpinBox.setSpecialValueText("(not set)")
+            self.albumRatingSpinBox.setValue(self.albumRatingSpinBox.minimum())
+        
         self.lovedCheckBox.setChecked(song.loved if song.loved else False)
         self.dislikedCheckBox.setChecked(song.disliked if song.disliked else False)
     
@@ -1027,33 +1058,52 @@ class SongInfoDialog(QtWidgets.QDialog, Ui_SongInfoDialog):
             bpsynctools.show_error_window("Title and artist cannot be empty.", "", "Save error")
             return
 
-        # there is likely a better way to do this, especially in Qt, but I'm not quite
-        # sure what that would look like (without just subclassing/overloading everything)
         self.song.name = self.titleLineEdit.text()
         self.song.artist = self.artistLineEdit.text()
         self.song.album = self.albumLineEdit.text()
-        self.song.year = self.yearSpinBox.value()
-        self.song.genre = self.genreLineEdit.text()
+        self.song.year = bpsynctools.return_spinbox_value_or_none(self.yearSpinBox)
+        self.song.genre = self.genreLineEdit.text() if self.genreLineEdit.text() else None
 
-        self.song.start_time = self.startTimeSpinBox.value() if not self.startTimeSpinBox.specialValueText() else None
-        self.song.stop_time = self.stopTimeSpinBox.value() if not self.stopTimeSpinBox.specialValueText() else None
-        self.song.disc_number = self.discNumberSpinBox.value() if not self.discNumberSpinBox.specialValueText() else None
-        self.song.disc_count = self.discCountSpinBox.value() if not self.discCountSpinBox.specialValueText() else None
-        self.song.track_number = self.trackNumberSpinBox.value() if not self.trackNumberSpinBox.specialValueText() else None
-        self.song.track_count = self.trackCountSpinBox.value() if not self.trackCountSpinBox.specialValueText() else None
+        # Precondition for start_time and stop_time. 
+        # May or may not mimic the actual validation in iTunes.
+        if self.startTimeSpinBox.value() > self.stopTimeSpinBox.value():
+            # Set it to the "default", which is that no stop time is set.
+            self.stopTimeSpinBox.setValue(self.stopTimeSpinBox.minimum())
+        
+        # If start_time == 0 or stop_time == song.total_time, set their spinboxes to -1.
+        if self.startTimeSpinBox.value() == 0:
+            # Set it to the "default", which is that no stop time is set.
+            self.startTimeSpinBox.setValue(self.startTimeSpinBox.minimum())
+        if self.stopTimeSpinBox.value() == self.song.total_time:
+            # Set it to the "default", which is that no stop time is set.
+            self.stopTimeSpinBox.setValue(self.stopTimeSpinBox.minimum())
 
-        self.song.volume_adjustment = self.volumeAdjustmentSpinBox.value() if self.volumeAdjustmentSpinBox.value() else None
-        self.song.play_count = self.playCountSpinBox.value() if self.playCountSpinBox.value() else None
-        self.song.last_played = self.lastPlayedDateTimeEdit.dateTime().toPython() if not self.lastPlayedDateTimeEdit.specialValueText() else None
-        self.song.skip_count = self.skipCountSpinBox.value() if self.skipCountSpinBox.value() else None
-        self.song.skip_date = self.lastSkippedDateTimeEdit.dateTime().toPython() if not self.lastPlayedDateTimeEdit.specialValueText() else None
-        self.song.albumRating = self.albumRatingSpinBox.value() if not self.albumRatingSpinBox.specialValueText() else None
+        self.song.start_time = bpsynctools.return_spinbox_value_or_none(self.startTimeSpinBox)
+        self.song.stop_time = bpsynctools.return_spinbox_value_or_none(self.stopTimeSpinBox)
+        self.song.disc_number = bpsynctools.return_spinbox_value_or_none(self.discNumberSpinBox)
+        self.song.disc_count = bpsynctools.return_spinbox_value_or_none(self.discCountSpinBox)
+        self.song.track_number = bpsynctools.return_spinbox_value_or_none(self.trackNumberSpinBox)
+        self.song.track_count = bpsynctools.return_spinbox_value_or_none(self.trackCountSpinBox)
 
-        self.song.rating_computed = self.ratingComputedCheckBox.isChecked() if self.ratingComputedCheckBox.isChecked() else None
-        self.song.compilation = self.compilationCheckBox.isChecked() if self.compilationCheckBox.isChecked() else None
-        self.song.loved = self.lovedCheckBox.isChecked() if self.lovedCheckBox.isChecked() else None
-        self.song.disliked = self.dislikedCheckBox.isChecked() if self.dislikedCheckBox.isChecked() else None
+        volume_adjust = bpsynctools.return_spinbox_value_or_none(self.volumeAdjustmentSpinBox)
+        if volume_adjust == 0:
+            self.song.volume_adjustment = None
+        else:
+            self.song.volume_adjustment = volume_adjust
+        
+        self.song.play_count = bpsynctools.return_spinbox_value_or_none(self.playCountSpinBox)
+        self.song.last_played = bpsynctools.return_spinbox_value_or_none(self.lastPlayedDateTimeEdit)
+        self.song.skip_count = bpsynctools.return_spinbox_value_or_none(self.skipCountSpinBox)
+        self.song.skip_date = bpsynctools.return_spinbox_value_or_none(self.lastSkippedDateTimeEdit)
+        self.song.albumRating = bpsynctools.return_spinbox_value_or_none(self.albumRatingSpinBox)
 
+        self.song.rating_computed = self.ratingComputedCheckBox.isChecked()
+        self.song.compilation = self.compilationCheckBox.isChecked()
+        self.song.loved = self.lovedCheckBox.isChecked()
+        self.song.disliked = self.dislikedCheckBox.isChecked()
+
+        # Note: the song object's already been changed - the songChanged refers
+        # to the fact that the table models aren't aware of this change.
         self.songChanged.emit(self.song)
 
         # Call super

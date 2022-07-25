@@ -24,6 +24,7 @@ from eyed3 import load
 import sqlalchemy.orm.exc
 import libpytunes
 
+from bpsyncwidgets import SongView
 import bpparse
 import models
 
@@ -190,7 +191,7 @@ def add_to_exportimport(lib, selected_fields, output_path):
         "Finish": "stop_time",
     }
 
-    logger.debug(f"Attempting write of ExportImport file with fields {selected_fields}")
+    logger.info(f"Attempting write of ExportImport file with fields {selected_fields}")
 
     # Overwrite the file if needed
     with open(output_path, "w", encoding="utf-16") as fp:
@@ -252,7 +253,7 @@ def add_to_exportimport(lib, selected_fields, output_path):
             # Separating newline
             fp.write("\n")
 
-    logger.debug(f"ExportImport write complete")
+    logger.info(f"ExportImport write complete")
 
 # endregion
 
@@ -543,5 +544,73 @@ def get_std_data(xml_path, bpstat_path, database_path):
         return
     
     return lib, bpsongs, db_songs
+
+def return_spinbox_value_or_none(spinbox: QtWidgets.QAbstractSpinBox): 
+    """
+    Returns either the spinbox's current value or none, depending on if the min value is set.
+
+    Supports QSpinBox and QDateTimeEdit - if minimumDateTime() is not available,
+    then minimum() is used. 
+
+    If it looks like a QDateTimeEdit, then it's automatically converted to a 
+    time struct.
+    """
+    if hasattr(spinbox, "minimumDateTime"):
+        # It's a QDateTimeEdit.
+        if spinbox.dateTime() != spinbox.minimumDateTime():
+            return time.gmtime(spinbox.dateTime().toSecsSinceEpoch())
+        else:
+            return None
+    elif hasattr(spinbox, "minimum"):
+        # It's a QSpinBox (probably).
+        if spinbox.value() != spinbox.minimum():
+            return spinbox.value()
+        else:
+            return None
+    else:
+        logger.error(f"return_value_or_none(): spinbox has no minimum function?")
+        raise AssertionError("Spinbox argument does not have a minimum function/attribute")
+
+def handle_updated_song_data(new_data, target_row, table:SongView, processing_column=1):
+    """
+    Handle any extra logic associated with updating the models from a
+    song info window update.
+
+    Assumed convention is that the processing column is at index 1.
+
+    :param new_data: A 2D array of one row from a helper function representing a row in `data`.
+    :param target_row: The index of the row (in `table.table_model`) to update.
+    :param table: The relevant table to update (a bpsyncwidgets.SongView.)
+    """
+    data = table.table_model.array_data
+
+    # Processing column handling
+    if new_data[0][processing_column] == 1:
+        if data[target_row][processing_column] == -1:
+            # If this is a reprocessable song, and it was previously 
+            # unprocessable, then set its checkbox to 0.
+            new_data[0][processing_column] = 0
+        else:
+            # If this was previously reprocessable, and it still is, 
+            # keep its checkbox as-is.
+            new_data[0][processing_column] = data[target_row][processing_column]
+    else:
+        if data[target_row][processing_column] != -1:
+            # If this was previously processable and now isn't,
+            # use setData to set the table model data to 0
+            # to force a stat update if needed.
+            idx = table.table_model.index(target_row, processing_column)
+            table.table_model.setData(idx, 0)
+        else:
+            # If this was previously unprocessable and still isn't,
+            # do nothing.
+            pass
+
+    # Update row in data
+    data[target_row] = new_data[0]
+
+    # Tell the model to update
+    # inefficient call?
+    table.set_data(data)
 
 # endregion

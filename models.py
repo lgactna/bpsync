@@ -139,39 +139,26 @@ class StoredSong(Base):
         These fields indicate a change in a tag that needs to be reflected in BlackPlayer,
         and therefore the song should be reprocessed.
         """
-        # python's `or` short-circuits so this *should* be efficient?
         # although not exactly pretty, maybe there's a better way
         # the fields that require a reprocess are unlikely to ever change
         # (i.e., track number will not suddenly stop being an ID3 tag)
-        if self.start_time != libpysong.start_time \
-        or self.stop_time != libpysong.stop_time \
-        or self.disc_number != libpysong.disc_number \
-        or self.disc_count != libpysong.disc_count \
-        or self.track_number != libpysong.track_number \
-        or self.track_count != libpysong.track_count \
-        or self.year != libpysong.year \
-        or self.bit_rate != libpysong.bit_rate \
-        or self.sample_rate != libpysong.sample_rate \
-        or self.volume_adjustment != libpysong.volume_adjustment \
-        or self.compilation != libpysong.compilation \
-        or self.track_type != libpysong.track_type \
-        or self.name != libpysong.name \
-        or self.artist != libpysong.artist \
-        or self.album_artist != libpysong.album_artist \
-        or self.composer != libpysong.composer \
-        or self.album != libpysong.album \
-        or self.grouping != libpysong.grouping \
-        or self.genre != libpysong.genre \
-        or self.kind != libpysong.kind \
-        or self.sort_album != libpysong.sort_album \
-        or self.work != libpysong.work \
-        or self.movement_name != libpysong.movement_name \
-        or self.movement_number != libpysong.movement_number \
-        or self.movement_count != libpysong.movement_count:
-            return True
+
+        fields_to_test = ["start_time", "stop_time", "disc_number", "disc_count",
+                          "track_number", "track_count", "year", "bit_rate",
+                          "sample_rate", "volume_adjustment", "compilation", 
+                          "track_type", "name", "artist", "album_artist", 
+                          "composer", "album", "grouping", "genre", 
+                          "kind", "sort_album", "work", "movement_name",
+                          "movement_number", "movement_count"]
+
+        for field_name in fields_to_test:
+            if getattr(self, field_name) != getattr(libpysong, field_name):
+                logger.info(f"{self.name} ({self.persistent_id}) needs reprocessing because {field_name} is different")
+                return True
         
         # Only try checking for file hash if explicitly requested
         if calculate_file_hash and self.blake2b_hash != calculate_file_hash(libpysong.location):
+            logger.info(f"{self.name} ({self.persistent_id}) needs reprocessing because the hash has changed")
             return True
         
         return False
@@ -251,7 +238,7 @@ def add_ignored_ids(song_ids):
                  for song_id in song_ids]
 
     with Session() as session:
-        logger.debug(f"Saving IgnoredSong objects...")
+        logger.info(f"Saving IgnoredSong objects...")
         session.bulk_save_objects(ignored_song_ids)
         session.commit()
 

@@ -116,6 +116,9 @@
        </item>
        <item>
         <widget class="QCheckBox" name="calc_hashes_checkbox">
+         <property name="toolTip">
+          <string>This will take some time and the screen will probably hang - only enable this if songs that should be marked as reprocessable aren't.</string>
+         </property>
          <property name="text">
           <string>Calculate file hashes</string>
          </property>

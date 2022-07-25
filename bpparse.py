@@ -99,12 +99,12 @@ def get_songs(filepath):
     for entry in lines:
         fields = entry.split(";")
         if len(fields) > 8:
-            logger.error(
+            logger.warning(
                 f"Tried to import a song with an extra semicolon in its metadata - please remove it ({entry=})")
             continue
         elif len(fields) < 8:
             # shouldn't ever happen unless the bpstat's been messed with, or an empty line was parsed
-            logger.error(f"Song has less than 8 fields?! ({entry=})")
+            logger.warning(f"Song has fewer than 8 fields - is it a trailing newline? ({entry=})")
             continue
         song = BPSong(*fields)
         songs.append(song)

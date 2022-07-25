@@ -7,7 +7,7 @@
     <x>0</x>
     <y>0</y>
     <width>669</width>
-    <height>467</height>
+    <height>477</height>
    </rect>
   </property>
   <property name="windowTitle">
@@ -155,6 +155,18 @@ background:transparent
         <widget class="QSpinBox" name="yearSpinBox">
          <property name="buttonSymbols">
           <enum>QAbstractSpinBox::NoButtons</enum>
+         </property>
+         <property name="specialValueText">
+          <string>(not set)</string>
+         </property>
+         <property name="minimum">
+          <number>-1</number>
+         </property>
+         <property name="maximum">
+          <number>9999</number>
+         </property>
+         <property name="value">
+          <number>-1</number>
          </property>
         </widget>
        </item>
@@ -413,10 +425,22 @@ background:transparent
          <property name="buttonSymbols">
           <enum>QAbstractSpinBox::NoButtons</enum>
          </property>
+         <property name="specialValueText">
+          <string>(start)</string>
+         </property>
+         <property name="minimum">
+          <number>-1</number>
+         </property>
+         <property name="value">
+          <number>-1</number>
+         </property>
         </widget>
        </item>
        <item row="1" column="0">
         <widget class="QLabel" name="stopTimeLabel">
+         <property name="toolTip">
+          <string>If this value is less than the start time when saved, it will be implicitly set to the end of the song.</string>
+         </property>
          <property name="text">
           <string>Stop time (msec)</string>
          </property>
@@ -424,8 +448,20 @@ background:transparent
        </item>
        <item row="1" column="1">
         <widget class="QSpinBox" name="stopTimeSpinBox">
+         <property name="toolTip">
+          <string>If this value is less than the start time when saved, it will be implicitly set to the end of the song.</string>
+         </property>
          <property name="buttonSymbols">
           <enum>QAbstractSpinBox::NoButtons</enum>
+         </property>
+         <property name="specialValueText">
+          <string>(end)</string>
+         </property>
+         <property name="minimum">
+          <number>-1</number>
+         </property>
+         <property name="value">
+          <number>-1</number>
          </property>
         </widget>
        </item>
@@ -441,6 +477,12 @@ background:transparent
          <property name="buttonSymbols">
           <enum>QAbstractSpinBox::NoButtons</enum>
          </property>
+         <property name="specialValueText">
+          <string>(not set)</string>
+         </property>
+         <property name="maximum">
+          <number>999999</number>
+         </property>
         </widget>
        </item>
        <item row="3" column="0">
@@ -454,6 +496,18 @@ background:transparent
         <widget class="QSpinBox" name="discCountSpinBox">
          <property name="buttonSymbols">
           <enum>QAbstractSpinBox::NoButtons</enum>
+         </property>
+         <property name="specialValueText">
+          <string>(not set)</string>
+         </property>
+         <property name="minimum">
+          <number>-1</number>
+         </property>
+         <property name="maximum">
+          <number>999999</number>
+         </property>
+         <property name="value">
+          <number>-1</number>
          </property>
         </widget>
        </item>
@@ -469,6 +523,12 @@ background:transparent
          <property name="buttonSymbols">
           <enum>QAbstractSpinBox::NoButtons</enum>
          </property>
+         <property name="specialValueText">
+          <string>(not set)</string>
+         </property>
+         <property name="maximum">
+          <number>999999</number>
+         </property>
         </widget>
        </item>
        <item row="5" column="0">
@@ -482,6 +542,18 @@ background:transparent
         <widget class="QSpinBox" name="trackCountSpinBox">
          <property name="buttonSymbols">
           <enum>QAbstractSpinBox::NoButtons</enum>
+         </property>
+         <property name="specialValueText">
+          <string>(not set)</string>
+         </property>
+         <property name="minimum">
+          <number>-1</number>
+         </property>
+         <property name="maximum">
+          <number>999999</number>
+         </property>
+         <property name="value">
+          <number>-1</number>
          </property>
         </widget>
        </item>
@@ -540,7 +612,7 @@ background:transparent
           <enum>QAbstractSpinBox::NoButtons</enum>
          </property>
          <property name="minimum">
-          <number>-1024</number>
+          <number>-255</number>
          </property>
          <property name="maximum">
           <number>1024</number>
@@ -568,6 +640,9 @@ background:transparent
          <property name="buttonSymbols">
           <enum>QAbstractSpinBox::NoButtons</enum>
          </property>
+         <property name="maximum">
+          <number>999999</number>
+         </property>
         </widget>
        </item>
        <item row="2" column="0">
@@ -579,6 +654,19 @@ background:transparent
        </item>
        <item row="2" column="1">
         <widget class="QDateTimeEdit" name="lastPlayedDateTimeEdit">
+         <property name="specialValueText">
+          <string>(never played)</string>
+         </property>
+         <property name="dateTime">
+          <datetime>
+           <hour>0</hour>
+           <minute>0</minute>
+           <second>0</second>
+           <year>1752</year>
+           <month>9</month>
+           <day>14</day>
+          </datetime>
+         </property>
          <property name="calendarPopup">
           <bool>true</bool>
          </property>
@@ -596,6 +684,9 @@ background:transparent
          <property name="buttonSymbols">
           <enum>QAbstractSpinBox::NoButtons</enum>
          </property>
+         <property name="maximum">
+          <number>999999</number>
+         </property>
         </widget>
        </item>
        <item row="4" column="0">
@@ -607,6 +698,9 @@ background:transparent
        </item>
        <item row="5" column="0">
         <widget class="QLabel" name="albumRatingLabel">
+         <property name="toolTip">
+          <string>A rating of 20 corresponds to one star. 100 is five stars.</string>
+         </property>
          <property name="text">
           <string>Album rating</string>
          </property>
@@ -614,8 +708,26 @@ background:transparent
        </item>
        <item row="5" column="1">
         <widget class="QSpinBox" name="albumRatingSpinBox">
+         <property name="toolTip">
+          <string>A rating of 20 corresponds to one star. 100 is five stars.</string>
+         </property>
          <property name="buttonSymbols">
           <enum>QAbstractSpinBox::NoButtons</enum>
+         </property>
+         <property name="specialValueText">
+          <string>(not set)</string>
+         </property>
+         <property name="minimum">
+          <number>-1</number>
+         </property>
+         <property name="maximum">
+          <number>100</number>
+         </property>
+         <property name="singleStep">
+          <number>1</number>
+         </property>
+         <property name="value">
+          <number>-1</number>
          </property>
         </widget>
        </item>
@@ -641,8 +753,21 @@ background:transparent
        </item>
        <item row="4" column="1">
         <widget class="QDateTimeEdit" name="lastSkippedDateTimeEdit">
+         <property name="specialValueText">
+          <string>(never skipped)</string>
+         </property>
          <property name="showGroupSeparator" stdset="0">
           <bool>false</bool>
+         </property>
+         <property name="dateTime">
+          <datetime>
+           <hour>0</hour>
+           <minute>0</minute>
+           <second>0</second>
+           <year>1752</year>
+           <month>9</month>
+           <day>14</day>
+          </datetime>
          </property>
          <property name="calendarPopup">
           <bool>true</bool>

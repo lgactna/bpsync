@@ -12,13 +12,13 @@ import bpsyncwidgets
 import bpparse
 import models
 
-logging.basicConfig(filename='bpsync.log', 
-                    encoding='utf-8', 
+logging.basicConfig(handlers=[logging.FileHandler("bpsync.log", mode='a', encoding='utf-8'),
+                              logging.StreamHandler(sys.stdout)],
                     level=logging.DEBUG,
                     format='%(filename)s:%(lineno)d | %(asctime)s | [%(levelname)s] - %(message)s',
                     datefmt='%Y-%m-%d %H:%M:%S')
+
 logger = logging.getLogger(__name__)
-logger.addHandler(logging.StreamHandler(sys.stdout))
 
 # dev constants - not used in program
 LIBRARY = 'iTunes_Music_Library.xml'
@@ -120,7 +120,7 @@ class FirstTimeWindow(QtWidgets.QWidget, Ui_FirstTimeWindow):
 
         # Enable updates from checkbox
         # Note that this breaks if the underlying table model is changed (which shouldn't change)
-        self.table_widget.table_model.dataChanged.connect(lambda idx: self.update_stats_from_index(idx, self.table_widget))
+        self.table_widget.table_model.dataActuallyChanged.connect(lambda idx: self.update_stats_from_index(idx, self.table_widget))
 
     def xml_open_prompt(self):
         file_name, _ = QtWidgets.QFileDialog.getOpenFileName(self, "Open XML", self.program_path,
@@ -194,13 +194,13 @@ class FirstTimeWindow(QtWidgets.QWidget, Ui_FirstTimeWindow):
         # Search for equivalent row in the underlying data
         # Linear is good enough
         data = self.table_widget.table_model.array_data
-        target_index = -1
+        target_row = -1
         for index, row in enumerate(data):
             if row[0] == song.track_id:
-                target_index = index
+                target_row = index
                 break
 
-        if target_index == -1:
+        if target_row == -1:
             logger.error(f"Tried looking up {song.track_id} in the model, but it wasn't there?")
             return
 
@@ -208,12 +208,7 @@ class FirstTimeWindow(QtWidgets.QWidget, Ui_FirstTimeWindow):
         temp_lib = {song.track_id: song}
         new_data = bpsynctools.first_sync_array_from_libpysongs(temp_lib)
 
-        # Update row in data
-        data[target_index] = new_data[0]
-
-        # Tell the model to update
-        # inefficient call?
-        self.table_widget.set_data(data)
+        bpsynctools.handle_updated_song_data(new_data, target_row, self.table_widget)
 
     def update_stats_from_index(self, index, table):
         """
@@ -414,8 +409,8 @@ class StandardSyncWindow(QtWidgets.QWidget, Ui_StandardSyncWindow):
 
         # Enable updates from checkbox
         # Note that this breaks if the underlying table model is changed (which shouldn't change)
-        self.new_songs_table.table_model.dataChanged.connect(lambda idx: self.update_stats_from_index(idx, self.new_songs_table))
-        self.songs_changed_table.table_model.dataChanged.connect(lambda idx: self.update_stats_from_index(idx, self.songs_changed_table))
+        self.new_songs_table.table_model.dataActuallyChanged.connect(lambda idx: self.update_stats_from_index(idx, self.new_songs_table))
+        self.songs_changed_table.table_model.dataActuallyChanged.connect(lambda idx: self.update_stats_from_index(idx, self.songs_changed_table))
     
     def open_ignored_songs_dialog(self):
         # whose responsibility is it to keep track of this?
@@ -525,28 +520,21 @@ class StandardSyncWindow(QtWidgets.QWidget, Ui_StandardSyncWindow):
         # Search for equivalent row in the underlying data
         # Linear is good enough
         data = self.songs_changed_table.table_model.array_data
-        target_index = -1
+        target_row = -1
         for index, row in enumerate(data):
             if row[0] == song.track_id:
-                target_index = index
+                target_row = index
                 break
 
-        if target_index == -1:
+        if target_row == -1:
             logger.error(f"Tried looking up {song.track_id} in the model, but it wasn't there?")
             return
 
         # Generate a "fake" first_sync_array from the song
         temp_lib = {song.track_id: song}
-        # BUG: the time is completely broken (doesn't return time/struct_time)
-        # BUG: this breaks the statistics because dataChanged isn't emitted
-        existing_songs_rows, _ = bpsynctools.standard_sync_arrays_from_data(temp_lib, self.bpsongs)
+        existing_songs_rows, _ = bpsynctools.standard_sync_arrays_from_data(temp_lib, self.bpsongs, False) # don't calc hashes
 
-        # Update row in data
-        data[target_index] = existing_songs_rows[0]
-
-        # Tell the model to update
-        # inefficient call?
-        self.songs_changed_table.set_data(data)
+        bpsynctools.handle_updated_song_data(existing_songs_rows, target_row, self.songs_changed_table)
 
     def update_song_in_new_songs_table(self, song):
         """
@@ -558,13 +546,13 @@ class StandardSyncWindow(QtWidgets.QWidget, Ui_StandardSyncWindow):
         # Search for equivalent row in the underlying data
         # Linear is good enough
         data = self.new_songs_table.table_model.array_data
-        target_index = -1
+        target_row = -1
         for index, row in enumerate(data):
             if row[0] == song.track_id:
-                target_index = index
+                target_row = index
                 break
 
-        if target_index == -1:
+        if target_row == -1:
             logger.error(f"Tried looking up {song.track_id} in the model, but it wasn't there?")
             return
 
@@ -572,16 +560,16 @@ class StandardSyncWindow(QtWidgets.QWidget, Ui_StandardSyncWindow):
         temp_lib = {song.track_id: song}
         new_data = bpsynctools.first_sync_array_from_libpysongs(temp_lib)
 
-        # Update row in data
-        data[target_index] = new_data[0]
-
-        # Tell the model to update
-        # inefficient call?
-        self.new_songs_table.set_data(data)
+        bpsynctools.handle_updated_song_data(new_data, target_row, self.new_songs_table)
 
     def update_stats_from_index(self, index, table):
         """
         Update the top-right statistics from a checkbox tick/untick.
+
+        This function should only be called after the data has been changed.
+        This also means that this function has no knowledge of the prior
+        state of the checkbox, which means care should be taken to only
+        call this if the data has actually changed.
         """
         # Check if library has been loaded; else, ignore
         if not self.lib:

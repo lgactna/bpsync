@@ -25,7 +25,7 @@ class Ui_SongInfoDialog(object):
     def setupUi(self, SongInfoDialog):
         if not SongInfoDialog.objectName():
             SongInfoDialog.setObjectName(u"SongInfoDialog")
-        SongInfoDialog.resize(669, 467)
+        SongInfoDialog.resize(669, 477)
         SongInfoDialog.setStyleSheet(u"QLineEdit, QSpinBox{\n"
 "	background:transparent;\n"
 "	border:transparent;\n"
@@ -121,6 +121,9 @@ class Ui_SongInfoDialog(object):
         self.yearSpinBox = QSpinBox(SongInfoDialog)
         self.yearSpinBox.setObjectName(u"yearSpinBox")
         self.yearSpinBox.setButtonSymbols(QAbstractSpinBox.NoButtons)
+        self.yearSpinBox.setMinimum(-1)
+        self.yearSpinBox.setMaximum(9999)
+        self.yearSpinBox.setValue(-1)
 
         self.formLayout_2.setWidget(3, QFormLayout.FieldRole, self.yearSpinBox)
 
@@ -305,6 +308,8 @@ class Ui_SongInfoDialog(object):
         self.startTimeSpinBox.setObjectName(u"startTimeSpinBox")
         self.startTimeSpinBox.setMinimumSize(QSize(120, 0))
         self.startTimeSpinBox.setButtonSymbols(QAbstractSpinBox.NoButtons)
+        self.startTimeSpinBox.setMinimum(-1)
+        self.startTimeSpinBox.setValue(-1)
 
         self.formLayout_5.setWidget(0, QFormLayout.FieldRole, self.startTimeSpinBox)
 
@@ -316,6 +321,8 @@ class Ui_SongInfoDialog(object):
         self.stopTimeSpinBox = QSpinBox(SongInfoDialog)
         self.stopTimeSpinBox.setObjectName(u"stopTimeSpinBox")
         self.stopTimeSpinBox.setButtonSymbols(QAbstractSpinBox.NoButtons)
+        self.stopTimeSpinBox.setMinimum(-1)
+        self.stopTimeSpinBox.setValue(-1)
 
         self.formLayout_5.setWidget(1, QFormLayout.FieldRole, self.stopTimeSpinBox)
 
@@ -327,6 +334,7 @@ class Ui_SongInfoDialog(object):
         self.discNumberSpinBox = QSpinBox(SongInfoDialog)
         self.discNumberSpinBox.setObjectName(u"discNumberSpinBox")
         self.discNumberSpinBox.setButtonSymbols(QAbstractSpinBox.NoButtons)
+        self.discNumberSpinBox.setMaximum(999999)
 
         self.formLayout_5.setWidget(2, QFormLayout.FieldRole, self.discNumberSpinBox)
 
@@ -338,6 +346,9 @@ class Ui_SongInfoDialog(object):
         self.discCountSpinBox = QSpinBox(SongInfoDialog)
         self.discCountSpinBox.setObjectName(u"discCountSpinBox")
         self.discCountSpinBox.setButtonSymbols(QAbstractSpinBox.NoButtons)
+        self.discCountSpinBox.setMinimum(-1)
+        self.discCountSpinBox.setMaximum(999999)
+        self.discCountSpinBox.setValue(-1)
 
         self.formLayout_5.setWidget(3, QFormLayout.FieldRole, self.discCountSpinBox)
 
@@ -349,6 +360,7 @@ class Ui_SongInfoDialog(object):
         self.trackNumberSpinBox = QSpinBox(SongInfoDialog)
         self.trackNumberSpinBox.setObjectName(u"trackNumberSpinBox")
         self.trackNumberSpinBox.setButtonSymbols(QAbstractSpinBox.NoButtons)
+        self.trackNumberSpinBox.setMaximum(999999)
 
         self.formLayout_5.setWidget(4, QFormLayout.FieldRole, self.trackNumberSpinBox)
 
@@ -360,6 +372,9 @@ class Ui_SongInfoDialog(object):
         self.trackCountSpinBox = QSpinBox(SongInfoDialog)
         self.trackCountSpinBox.setObjectName(u"trackCountSpinBox")
         self.trackCountSpinBox.setButtonSymbols(QAbstractSpinBox.NoButtons)
+        self.trackCountSpinBox.setMinimum(-1)
+        self.trackCountSpinBox.setMaximum(999999)
+        self.trackCountSpinBox.setValue(-1)
 
         self.formLayout_5.setWidget(5, QFormLayout.FieldRole, self.trackCountSpinBox)
 
@@ -406,7 +421,7 @@ class Ui_SongInfoDialog(object):
         self.volumeAdjustmentSpinBox = QSpinBox(SongInfoDialog)
         self.volumeAdjustmentSpinBox.setObjectName(u"volumeAdjustmentSpinBox")
         self.volumeAdjustmentSpinBox.setButtonSymbols(QAbstractSpinBox.NoButtons)
-        self.volumeAdjustmentSpinBox.setMinimum(-1024)
+        self.volumeAdjustmentSpinBox.setMinimum(-255)
         self.volumeAdjustmentSpinBox.setMaximum(1024)
 
         self.formLayout_6.setWidget(0, QFormLayout.FieldRole, self.volumeAdjustmentSpinBox)
@@ -420,6 +435,7 @@ class Ui_SongInfoDialog(object):
         self.playCountSpinBox.setObjectName(u"playCountSpinBox")
         self.playCountSpinBox.setReadOnly(True)
         self.playCountSpinBox.setButtonSymbols(QAbstractSpinBox.NoButtons)
+        self.playCountSpinBox.setMaximum(999999)
 
         self.formLayout_6.setWidget(1, QFormLayout.FieldRole, self.playCountSpinBox)
 
@@ -430,6 +446,7 @@ class Ui_SongInfoDialog(object):
 
         self.lastPlayedDateTimeEdit = QDateTimeEdit(SongInfoDialog)
         self.lastPlayedDateTimeEdit.setObjectName(u"lastPlayedDateTimeEdit")
+        self.lastPlayedDateTimeEdit.setDateTime(QDateTime(QDate(1752, 9, 14), QTime(0, 0, 0)))
         self.lastPlayedDateTimeEdit.setCalendarPopup(True)
 
         self.formLayout_6.setWidget(2, QFormLayout.FieldRole, self.lastPlayedDateTimeEdit)
@@ -442,6 +459,7 @@ class Ui_SongInfoDialog(object):
         self.skipCountSpinBox = QSpinBox(SongInfoDialog)
         self.skipCountSpinBox.setObjectName(u"skipCountSpinBox")
         self.skipCountSpinBox.setButtonSymbols(QAbstractSpinBox.NoButtons)
+        self.skipCountSpinBox.setMaximum(999999)
 
         self.formLayout_6.setWidget(3, QFormLayout.FieldRole, self.skipCountSpinBox)
 
@@ -458,6 +476,10 @@ class Ui_SongInfoDialog(object):
         self.albumRatingSpinBox = QSpinBox(SongInfoDialog)
         self.albumRatingSpinBox.setObjectName(u"albumRatingSpinBox")
         self.albumRatingSpinBox.setButtonSymbols(QAbstractSpinBox.NoButtons)
+        self.albumRatingSpinBox.setMinimum(-1)
+        self.albumRatingSpinBox.setMaximum(100)
+        self.albumRatingSpinBox.setSingleStep(1)
+        self.albumRatingSpinBox.setValue(-1)
 
         self.formLayout_6.setWidget(5, QFormLayout.FieldRole, self.albumRatingSpinBox)
 
@@ -484,6 +506,7 @@ class Ui_SongInfoDialog(object):
         self.lastSkippedDateTimeEdit = QDateTimeEdit(SongInfoDialog)
         self.lastSkippedDateTimeEdit.setObjectName(u"lastSkippedDateTimeEdit")
         self.lastSkippedDateTimeEdit.setProperty("showGroupSeparator", False)
+        self.lastSkippedDateTimeEdit.setDateTime(QDateTime(QDate(1752, 9, 14), QTime(0, 0, 0)))
         self.lastSkippedDateTimeEdit.setCalendarPopup(True)
 
         self.formLayout_6.setWidget(4, QFormLayout.FieldRole, self.lastSkippedDateTimeEdit)
@@ -535,6 +558,7 @@ class Ui_SongInfoDialog(object):
         self.artistLabel.setText(QCoreApplication.translate("SongInfoDialog", u"Artist", None))
         self.albumLabel.setText(QCoreApplication.translate("SongInfoDialog", u"Album", None))
         self.yearLabel.setText(QCoreApplication.translate("SongInfoDialog", u"Year", None))
+        self.yearSpinBox.setSpecialValueText(QCoreApplication.translate("SongInfoDialog", u"(not set)", None))
         self.genreLabel.setText(QCoreApplication.translate("SongInfoDialog", u"Genre", None))
         self.trackIDLabel.setText(QCoreApplication.translate("SongInfoDialog", u"Track ID", None))
         self.trackIDLineEdit.setText("")
@@ -557,11 +581,23 @@ class Ui_SongInfoDialog(object):
         self.sampleRateLabel.setText(QCoreApplication.translate("SongInfoDialog", u"TextLabel", None))
         self.label_8.setText(QCoreApplication.translate("SongInfoDialog", u"Sample rate", None))
         self.startTimeLabel.setText(QCoreApplication.translate("SongInfoDialog", u"Start time (msec)", None))
+        self.startTimeSpinBox.setSpecialValueText(QCoreApplication.translate("SongInfoDialog", u"(start)", None))
+#if QT_CONFIG(tooltip)
+        self.stopTimeLabel.setToolTip(QCoreApplication.translate("SongInfoDialog", u"If this value is less than the start time when saved, it will be implicitly set to the end of the song.", None))
+#endif // QT_CONFIG(tooltip)
         self.stopTimeLabel.setText(QCoreApplication.translate("SongInfoDialog", u"Stop time (msec)", None))
+#if QT_CONFIG(tooltip)
+        self.stopTimeSpinBox.setToolTip(QCoreApplication.translate("SongInfoDialog", u"If this value is less than the start time when saved, it will be implicitly set to the end of the song.", None))
+#endif // QT_CONFIG(tooltip)
+        self.stopTimeSpinBox.setSpecialValueText(QCoreApplication.translate("SongInfoDialog", u"(end)", None))
         self.discNumberLabel.setText(QCoreApplication.translate("SongInfoDialog", u"Disc number", None))
+        self.discNumberSpinBox.setSpecialValueText(QCoreApplication.translate("SongInfoDialog", u"(not set)", None))
         self.discCountLabel.setText(QCoreApplication.translate("SongInfoDialog", u"Disc count", None))
+        self.discCountSpinBox.setSpecialValueText(QCoreApplication.translate("SongInfoDialog", u"(not set)", None))
         self.trackNumberLabel.setText(QCoreApplication.translate("SongInfoDialog", u"Track number", None))
+        self.trackNumberSpinBox.setSpecialValueText(QCoreApplication.translate("SongInfoDialog", u"(not set)", None))
         self.trackCountLabel.setText(QCoreApplication.translate("SongInfoDialog", u"Track count", None))
+        self.trackCountSpinBox.setSpecialValueText(QCoreApplication.translate("SongInfoDialog", u"(not set)", None))
         self.ratingComputedLabel.setText(QCoreApplication.translate("SongInfoDialog", u"Rating computed", None))
         self.compilationLabel.setText(QCoreApplication.translate("SongInfoDialog", u"Compilation", None))
 #if QT_CONFIG(tooltip)
@@ -579,11 +615,20 @@ class Ui_SongInfoDialog(object):
         self.playCountSpinBox.setToolTip(QCoreApplication.translate("SongInfoDialog", u"This value is not editable.", None))
 #endif // QT_CONFIG(tooltip)
         self.lastPlayedLabel.setText(QCoreApplication.translate("SongInfoDialog", u"Last played", None))
+        self.lastPlayedDateTimeEdit.setSpecialValueText(QCoreApplication.translate("SongInfoDialog", u"(never played)", None))
         self.skipCountLabel.setText(QCoreApplication.translate("SongInfoDialog", u"Skip count", None))
         self.lastSkippedLabel.setText(QCoreApplication.translate("SongInfoDialog", u"Last skipped", None))
+#if QT_CONFIG(tooltip)
+        self.albumRatingLabel.setToolTip(QCoreApplication.translate("SongInfoDialog", u"A rating of 20 corresponds to one star. 100 is five stars.", None))
+#endif // QT_CONFIG(tooltip)
         self.albumRatingLabel.setText(QCoreApplication.translate("SongInfoDialog", u"Album rating", None))
+#if QT_CONFIG(tooltip)
+        self.albumRatingSpinBox.setToolTip(QCoreApplication.translate("SongInfoDialog", u"A rating of 20 corresponds to one star. 100 is five stars.", None))
+#endif // QT_CONFIG(tooltip)
+        self.albumRatingSpinBox.setSpecialValueText(QCoreApplication.translate("SongInfoDialog", u"(not set)", None))
         self.lovedLabel.setText(QCoreApplication.translate("SongInfoDialog", u"Loved", None))
         self.dislikedLabel.setText(QCoreApplication.translate("SongInfoDialog", u"Disliked", None))
+        self.lastSkippedDateTimeEdit.setSpecialValueText(QCoreApplication.translate("SongInfoDialog", u"(never skipped)", None))
         self.label.setText(QCoreApplication.translate("SongInfoDialog", u"Excluding volume adjustment, all changes only reflect in the XML!", None))
     # retranslateUi
 
