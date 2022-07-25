@@ -112,6 +112,9 @@ class Ui_StandardSyncWindow(object):
 
         self.calc_hashes_checkbox = QCheckBox(StandardSyncWindow)
         self.calc_hashes_checkbox.setObjectName(u"calc_hashes_checkbox")
+        font = QFont()
+        font.setUnderline(True)
+        self.calc_hashes_checkbox.setFont(font)
 
         self.verticalLayout_4.addWidget(self.calc_hashes_checkbox)
 
