@@ -52,8 +52,8 @@ class BPSong:
 
         path = os.path.join(prefix_path, self.filepath)
 
-        return f"{self.total_plays};{self.plays_this_month};{self.title};{self.artist};" \
-               f"{self.album};{path};{addition_date};{last_played}"
+        return f"{self.total_plays};{self.plays_this_month};{self.title.replace(';', ';')};{self.artist.replace(';', ';')};" \
+               f"{self.album.replace(';', ';')};{path};{addition_date};{last_played}"
     
     def get_persistent_id(self):
         """
@@ -106,6 +106,7 @@ def get_songs(filepath):
             # shouldn't ever happen unless the bpstat's been messed with, or an empty line was parsed
             logger.warning(f"Song has fewer than 8 fields - is it a trailing newline? ({entry=})")
             continue
+        fields = [field.replace(";", ";") for field in fields]
         song = BPSong(*fields)
         songs.append(song)
 

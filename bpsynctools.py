@@ -9,6 +9,7 @@ import logging
 import hashlib
 import time
 import xml
+import re
 
 from collections import namedtuple
 from shutil import copy2
@@ -21,6 +22,7 @@ from PySide6 import QtWidgets
 from pydub import AudioSegment
 from pydub.utils import mediainfo
 from eyed3 import load
+from mutagen.easyid3 import EasyID3
 import sqlalchemy.orm.exc
 import libpytunes
 
@@ -62,7 +64,7 @@ def copy_and_process_song(song, output_folder='tmp'):
     this output folder is `/tmp` relative to the run location.
 
     If the Song object is not an mp3 file or has been trimmed, the song is processed using
-    pydub and requires ffmpeg/libav.
+    ffmpeg/libav.
     """
     # affirm output_folder (and any parent folders, if specified) exists, and make it if it doesn't exist
     # https://docs.python.org/3/library/pathlib.html#pathlib.Path.mkdir
@@ -74,31 +76,58 @@ def copy_and_process_song(song, output_folder='tmp'):
 
     try:
         if file_extension != ".mp3" or song.start_time or song.stop_time or song.volume_adjustment:
-            logger.info(f"{song.persistent_id} needs to be processed by pydub ({output_path})")
-            obj = AudioSegment.from_file(song.location)
+            logger.info(f"{song.persistent_id} needs to be processed by ffmpeg ({output_path})")
+            ffmpeg = ['ffmpeg', '-loglevel', 'fatal', '-y', '-i', song.location]
 
-            if song.start_time or song.stop_time:
-                start_time = 0 if not song.start_time else song.start_time
-                stop_time = len(obj) if not song.stop_time else song.stop_time
+            if song.start_time:
+                ffmpeg += ['-ss', f'{song.start_time / 1000:g}']
+                logger.info(f"Trimmed Start {song.persistent_id}")
 
-                obj = obj[start_time:stop_time]
-
-                logger.info(f"Trimmed {song.persistent_id}")
+            if song.stop_time:
+                ffmpeg += ['-to', f'{song.stop_time / 1000:g}']
+                logger.info(f"Trimmed End {song.persistent_id}")
             
-            if song.volume_adjustment:
+            # avoid reencoding for insignificant volume changes. values can be adjusted if need be
+            if song.volume_adjustment and (song.volume_adjustment < -2 or song.volume_adjustment > 2):
                 # internally stored as an integer between -255 and 255
                 # but can physically be adjusted past 255
-                if song.volume_adjustment <= -255:
-                    obj = obj - 100  # essentially silent
-                    logger.warning(f"The song {song.name} has a volume adjustment value less than -255 and is silent!")
-                else:
-                    gain_factor = (song.volume_adjustment + 255)/255
-                    decibel_change = 10 * log10(gain_factor)
-                    obj = obj + decibel_change
-                    logger.info(f"Changed {song.name} gain factor by {gain_factor} ({decibel_change} dB)")
+                gain_factor = (song.volume_adjustment + 255)/255
+                decibel_change = 20 * log10(gain_factor)
 
-            # tags parameter is used for retaining metadata
-            obj.export(output_path, format="mp3", tags=mediainfo(song.location)['TAG'])
+                # run ffmpeg once to detect peak dB of song. this costs ~0.4s per file, but solves clipping distortion
+                # non-windows os should use '/dev/null' in place of 'NUL' in the ffmpeg parameters below
+                ffmpeg_pipe = subprocess.run(['ffmpeg', '-i', song.location, '-af', 'volumedetect', '-vn', '-sn', '-dn', '-f', 'null', 'NUL'], stdout=subprocess.PIPE, stderr=subprocess.STDOUT)
+                ffmpeg_pipe = re.search(r"max_volume: (\S+) dB", str(ffmpeg_pipe))
+                if ffmpeg_pipe is not None:
+                    decibel_peak = float(ffmpeg_pipe.group(1))
+                
+                if ffmpeg_pipe is not None and decibel_peak + decibel_change > 0:
+                    # technically acompressor would be more accurate here, but im too lazy to implement it and alimiter is close enough
+                    # TODO: consider lowering alimiter 'attack' to 1 (ms) (default is 5 ms)
+                    # TODO: implement acompressor instead
+                    ffmpeg += ['-af', f'alimiter=limit={-decibel_change}dB']
+                else:
+                    ffmpeg += ['-af', f'volume={decibel_change}dB']
+                logger.info(f"Changed {song.name} gain factor by {gain_factor} ({decibel_change} dB)")
+
+            # volume changes/mp3 conversions require reencoding
+            if file_extension != ".mp3" or song.volume_adjustment:
+                ffmpeg += ['-q:a', '0']
+            else:
+                ffmpeg += ['-c', 'copy']
+            ffmpeg += ['-id3v2_version', '3', output_path]
+
+            subprocess.run(ffmpeg)
+
+            # '-ss' throws away any data before the timestamp which includes
+            # the thumbnail, so it must be readded and reprocessed, but
+            # `-c copy` is fast, so speed shouldn't be significantly affected
+            if song.start_time:
+                temp_output = os.path.join(output_folder, "out.mp3")
+                subprocess.run(['ffmpeg', '-loglevel', 'fatal', '-y', '-i', song.location, '-i', output_path, '-map', '0:v:0', '-map', '1:a:0', '-c', 'copy', '-id3v2_version', '3', temp_output])
+                # ffmpeg can't write over itself, so a temp file
+                # must be made and then replaced afterwards
+                os.replace(temp_output, output_path)
         else:
             logger.info(f"{song.persistent_id} does not need to be processed and was directly copied ({output_path})")
             copy2(song.location, output_path)
@@ -114,12 +143,11 @@ def strip_semicolons(song_path):
 
     This check is used to prevent .bpstat files from failing to import.
     """
-    # TODO: check if this actually works
-    out_file = load(song_path)
-    for field in [out_file.tag.artist, out_file.tag.title, out_file.tag.album]:
-        field = field.replace(";", "")
+    out_file = EasyID3(song_path)
+    for field_name in ["title", "artist", "album"]:
+        out_file[field_name] = [out_file[field_name][0].replace(";", ";")]
 
-    out_file.tag.save(version=(2,3,0))
+    out_file.save()
 
 def check_for_semicolons(song):
     """
@@ -130,8 +158,7 @@ def check_for_semicolons(song):
 
     for field in [song.artist, song.name, song.album]:
         if field and ";" in field:
-            logger.warning(f"Semicolon detected in {song.name=} ({song.persistent_id=})! "
-                         f"This can cause .bpstat imports to fail.")
+            logger.warning(f"Semicolon detected in {song.name=} ({song.persistent_id=})")
             return True
     return False
 
