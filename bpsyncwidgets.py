@@ -66,7 +66,7 @@ class CheckBoxDelegate(QtWidgets.QItemDelegate):
         flag enabled, call setModelData(). This means that any rows in a checkbox
         column where ItemIsEditable is not set will not be updated at all.
         """
-        if not int(index.flags() & QtCore.Qt.ItemIsEditable) > 0:
+        if not (index.flags() & QtCore.Qt.ItemIsEditable):
             return False
         if event.type() == QtCore.QEvent.Type.MouseButtonRelease and event.button() == Qt.MouseButton.LeftButton:
             # Change the checkbox-state
@@ -292,7 +292,7 @@ class SongTableModel(QAbstractTableModel):
 
         # Note: index must be relative to the source model, not the proxy model!
         # Callers are responsible for mapping it ahead of time!
-        if role == Qt.EditRole and int(index.flags() & QtCore.Qt.ItemIsEditable) > 0:
+        if role == Qt.EditRole and (index.flags() & QtCore.Qt.ItemIsEditable):
             old_data = self.array_data[index.row()][index.column()]
             self.array_data[index.row()][index.column()] = value
 
