@@ -372,24 +372,41 @@ def standard_sync_arrays_from_data(library, bpstat_songs, calculate_file_hashes)
         # check if the song exists in both the bpstat and the database
         try:
             stored_song = session.query(models.StoredSong).filter(models.StoredSong.persistent_id==song.persistent_id).scalar()
-            bpstat_song = bpsongs[song.persistent_id]
+            bpstat_song = bpsongs.get(song.persistent_id, None)
 
-            if not stored_song:
-                raise KeyError()  # same behavior as bpstat_song throwing a KeyError upon no result found
+            if not stored_song and bpstat_song is not None:
+                # This shouldn't ever happen
+                logger.error(f"{song.persistent_id} exists in bpstat but not in the database")
+                continue
+            elif not stored_song and bpstat_song is None:
+                logger.info(f"{song.name} ({song.persistent_id}) is a new song")
+                # The song doesn't exist in the StoredSong and wasn't in the bpstat.
+                # Check if the song was previously ignored (i.e.) a corresponding IgnoredSong entry exists.
+                # If so, then do not attempt to add it to the new song table.
+                ignored_song = session.query(models.IgnoredSong).filter(
+                    models.IgnoredSong.persistent_id == song.persistent_id).scalar()
+
+                if not ignored_song:
+                    new_songs[track_id] = song
+
+                # In all cases, since the song is not being tracked, move on to the next song.
+                continue
+            elif stored_song and bpstat_song is None:
+                # The song doesn't exist in the bpstat but exists in StoredSong.
+                # This happens since Blackplayer doesn't export tracks with 0 plays into bpstat.
+                assert stored_song.last_playcount == 0, f"{song.name} ({song.persistent_id}) has a playcount higher than 0 but does not appear within bpstat"
+                logger.info(f"{song.name} ({song.persistent_id}) is already in the database but isn't in bpstat")
+                # Check for existing playcount to catch potential future bugs
+                play_count = song.play_count if song.play_count else 0
+                # Songs with 0 plays in bpstat should have no changes and don't need a checkbox
+                reprocess = -1
+                existing_songs_rows.append([track_id, reprocess, song.name, song.artist, song.album, stored_song.last_playcount, play_count,
+                                        0, 0, stored_song.last_playcount, song.persistent_id])
+                continue
+            else:
+                pass
         except sqlalchemy.orm.exc.MultipleResultsFound:
             logger.error("Database has multiple entries of the same ID?")
-            continue
-        except KeyError:
-            # The song doesn't exist in the StoredSong or wasn't in the bpstat.
-            # Check if the song was previously ignored (i.e.) a corresponding IgnoredSong entry exists.
-            # If so, then do not attempt to add it to the new song table.
-            ignored_song = session.query(models.IgnoredSong).filter(
-                models.IgnoredSong.persistent_id == song.persistent_id).scalar()
-
-            if not ignored_song:
-                new_songs[track_id] = song
-
-            # In all cases, since the song is not being tracked, move on to the next song.
             continue
 
         # if it gets here, then the song is being tracked
