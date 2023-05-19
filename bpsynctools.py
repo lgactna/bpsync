@@ -375,7 +375,7 @@ def standard_sync_arrays_from_data(library, bpstat_songs, calculate_file_hashes)
             bpstat_song = bpsongs.get(song.persistent_id, None)
 
             if not stored_song and bpstat_song is not None:
-                # This shouldn't ever happen
+                # This should only ever happen due to user error
                 logger.error(f"{song.persistent_id} exists in bpstat but not in the database")
                 continue
             elif not stored_song and bpstat_song is None:
@@ -396,11 +396,9 @@ def standard_sync_arrays_from_data(library, bpstat_songs, calculate_file_hashes)
                 # This happens since Blackplayer doesn't export tracks with 0 plays into bpstat.
                 assert stored_song.last_playcount == 0, f"{song.name} ({song.persistent_id}) has a playcount higher than 0 but does not appear within bpstat"
                 logger.info(f"{song.name} ({song.persistent_id}) is already in the database but isn't in bpstat")
-                # Check for existing playcount to catch potential future bugs
-                play_count = song.play_count if song.play_count else 0
                 # Songs with 0 plays in bpstat should have no changes and don't need a checkbox
                 reprocess = -1
-                existing_songs_rows.append([track_id, reprocess, song.name, song.artist, song.album, stored_song.last_playcount, play_count,
+                existing_songs_rows.append([track_id, reprocess, song.name, song.artist, song.album, stored_song.last_playcount, 0,
                                         0, 0, stored_song.last_playcount, song.persistent_id])
                 continue
             else:
