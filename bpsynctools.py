@@ -379,10 +379,10 @@ def standard_sync_arrays_from_data(library, bpstat_songs, calculate_file_hashes)
                 logger.error(f"{song.persistent_id} exists in bpstat but not in the database")
                 continue
             elif not stored_song and bpstat_song is None:
-                logger.info(f"{song.name} ({song.persistent_id}) is a new song")
                 # The song doesn't exist in the StoredSong and wasn't in the bpstat.
                 # Check if the song was previously ignored (i.e.) a corresponding IgnoredSong entry exists.
                 # If so, then do not attempt to add it to the new song table.
+                logger.info(f"{song.name} ({song.persistent_id}) is a new song")
                 ignored_song = session.query(models.IgnoredSong).filter(
                     models.IgnoredSong.persistent_id == song.persistent_id).scalar()
 
@@ -392,7 +392,7 @@ def standard_sync_arrays_from_data(library, bpstat_songs, calculate_file_hashes)
                 # In all cases, since the song is not being tracked, move on to the next song.
                 continue
             elif stored_song and bpstat_song is None:
-                # The song doesn't exist in the bpstat but exists in StoredSong.
+                # The song doesn't exist in the bpstat but exists in the StoredSong.
                 # This happens since Blackplayer doesn't export tracks with 0 plays into bpstat.
                 assert stored_song.last_playcount == 0, f"{song.name} ({song.persistent_id}) has a playcount higher than 0 but does not appear within bpstat"
                 logger.info(f"{song.name} ({song.persistent_id}) is already in the database but isn't in bpstat")
