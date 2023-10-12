@@ -301,10 +301,10 @@ class FirstTimeWindow(QtWidgets.QWidget, Ui_FirstTimeWindow):
         selected_ids_tracking = []
         ignored_ids_tracking = []
         for row in data:
-            if row[1]:  # Check for mp3 processing
+            if row[1] > 0:  # Check for mp3 processing
                 selected_ids_processing.append(row[0])
 
-            if row[2]:  # Check for db tracking
+            if row[2] > 0:  # Check for db tracking
                 selected_ids_tracking.append(row[0])
             else:
                 # Add persistent ID to ignore list
@@ -671,16 +671,16 @@ class StandardSyncWindow(QtWidgets.QWidget, Ui_StandardSyncWindow):
         selected_ids_tracking = []
         ignored_ids_tracking = []
         for row in new_data:
-            if row[1]:  # Check for mp3 processing
+            if row[1] > 0:  # Check for mp3 processing
                 selected_ids_processing.append(row[0])
-            if row[2]:  # Check for db tracking
+            if row[2] > 0:  # Check for db tracking
                 selected_ids_tracking.append(row[0])
             else:
                 song = self.lib.songs[row[0]]
                 ignored_ids_tracking.append(song.persistent_id)
         for row in existing_data:
-            if row[1]:
-                selected_ids_process.append(row[0])
+            if row[1] > 0:
+                selected_ids_processing.append(row[0])
 
         # Create progress bar for element processing (the longest operation)
         progress_window = bpsyncwidgets.ProgressWindow(len(selected_ids_processing))
@@ -762,7 +762,7 @@ class IgnoredSongsDialog(QtWidgets.QDialog, Ui_IgnoredSongsDialog):
 
         table_data = self.ignored_song_table.table_model.array_data
         for row in table_data:
-            if row[1]:  # If "Track?" box checked
+            if row[1] > 0:  # If "Track?" box checked
                 # Note that the parent's library should be an unmodified libpytunes Library
                 # object, which has its keys as the track ID (and not persistent ID)
                 unignored_songs[row[0]] = self.parent().lib.songs[row[0]]
@@ -891,7 +891,7 @@ class ExportImportWindow(QtWidgets.QWidget, Ui_ExportImportWindow):
 
         # Pass into add_to_exportimport, raise error otherwise 
         try:
-            bpsynctools.add_to_exportimport(self.lib, tags, output_path)
+            bpsynctools.lib_to_exportimport(self.lib, tags, output_path)
 
             msg = QtWidgets.QMessageBox()
             msg.setIcon(QtWidgets.QMessageBox.NoIcon)

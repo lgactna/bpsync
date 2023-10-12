@@ -123,7 +123,7 @@ def copy_and_process_song(song, output_folder='tmp'):
             # the thumbnail, so it must be readded and reprocessed, but
             # `-c copy` is fast, so speed shouldn't be significantly affected
             if song.start_time:
-                temp_output = os.path.join(output_folder, "out.mp3")
+                temp_output = os.path.join(output_folder, song.persistent_id + "_temp.mp3")
                 subprocess.run(['ffmpeg', '-loglevel', 'fatal', '-y', '-i', song.location, '-i', output_path, '-map', '0:v:0', '-map', '1:a:0', '-c', 'copy', '-id3v2_version', '3', temp_output])
                 # ffmpeg can't write over itself, so a temp file
                 # must be made and then replaced afterwards
@@ -176,13 +176,13 @@ def add_to_bpstat(song, bpstat_prefix, bpstat_path):
     with open(bpstat_path, "ab") as fp:
         fp.write(output.encode('utf-8'))
 
-def add_to_exportimport(lib, selected_fields, output_path):
+def add_to_exportimport(song, selected_fields, output_path):
     """
     Append a song to a line in the specified text file.
 
     For use with https://samsoft.org.uk/iTunes/scripts.asp#ExportImport.
     
-    :param lib: The libpytunes library to use.
+    :param song: The libpytunes song to add.
     :param selected_fields: A list of strings with the field names.
     :param output_path: The full location of the txt file to use.
     """
@@ -218,70 +218,84 @@ def add_to_exportimport(lib, selected_fields, output_path):
         "Finish": "stop_time",
     }
 
-    logger.info(f"Attempting write of ExportImport file with fields {selected_fields}")
+    # This adds the BOM if needed
+    # ExportImport files are in utf-16, *not* utf-8
+    with open(output_path, "a", encoding="utf-16") as fp:
+        fp.write(f"<ID>{song.persistent_id[0:8]}-{song.persistent_id[8:16]}\n")
+        
+        for field in selected_fields:
+            try:
+                attr_name = attrs[field]
+            except KeyError:
+                logger.error(f"Tried to look up {field}, but it doesn't exist in the available fields; skipping")
+                continue
+        
+            try:
+                field_value = getattr(song, attr_name)
+            except AttributeError:
+                logger.error(f"Song object doesn't have attribute {attr_name}? (programming error)")
+                continue
 
+            # Special processing for specific fields
+            if attr_name in ["date_added", "skip_date", "lastplayed"]:
+                # If no date is set, then default to "12:00:00 AM"
+                if field_value == None:
+                    field_value = "12:00:00 AM"
+                else:
+                    # If a date is set, convert it to the format 1/6/2022 5:32:11 PM
+                    # Unfortunately platform support for no-padding is implementation-dependent,
+                    # so it's not exact
+                    field_value = time.strftime("%m/%d/%Y %I:%M:%S %p", field_value)
+            elif attr_name in ["play_count", "skip_count"]:
+                # If no playcount or skipcount field exists, that's equivalent
+                # to 0 playcount/skipcount
+                if field_value == None:
+                    field_value = 0
+            elif attr_name in ["start_time", "stop_time"]:
+                # The result is always rounded down to an integer (regardless of what
+                # the actual value in msec is).
+                #
+                # If no stop or start time has been set, either 0 (for start time)
+                # or the length of the song in seconds (for stop time) is printed out.
+                if field_value == None:
+                    if attr_name == "start_time":
+                        field_value = 0
+                    else:
+                        field_value = song.total_time // 100
+                else:
+                    field_value = field_value // 100
+            else:
+                if field_value == None:
+                    field_value = ""
+
+            fp.write(f"<{field}>{field_value}\n")
+
+        # Separating newline
+        fp.write("\n")
+
+def lib_to_exportimport(lib, selected_fields, output_path):
+    """
+    Process an entire library through add_to_exportimport().
+
+    For use with https://samsoft.org.uk/iTunes/scripts.asp#ExportImport.
+    
+    :param lib: The libpytunes library to use.
+    :param selected_fields: A list of strings with the field names.
+    :param output_path: The full location of the txt file to use.
+    """
+
+    logger.info(f"Attempting write of ExportImport file with fields {selected_fields}")
+    
     # Overwrite the file if needed
     with open(output_path, "w", encoding="utf-16") as fp:
         fp.write("")
 
-    # This adds the BOM if needed
-    # ExportImport files are in utf-16, *not* utf-8
-    with open(output_path, "a", encoding="utf-16") as fp:
-        for _, song in lib.songs.items():
-            fp.write(f"<ID>{song.persistent_id[0:8]}-{song.persistent_id[8:16]}\n")
-            
-            for field in selected_fields:
-                try:
-                    attr_name = attrs[field]
-                except KeyError:
-                    logger.error(f"Tried to look up {field}, but it doesn't exist in the available fields; skipping")
-                    continue
-            
-                try:
-                    field_value = getattr(song, attr_name)
-                except AttributeError:
-                    logger.error(f"Song object doesn't have attribute {attr_name}? (programming error)")
-                    continue
-
-                # Special processing for specific fields
-                if attr_name in ["date_added", "skip_date", "lastplayed"]:
-                    # If no date is set, then default to "12:00:00 AM"
-                    if field_value == None:
-                        field_value = "12:00:00 AM"
-                    else:
-                        # If a date is set, convert it to the format 1/6/2022 5:32:11 PM
-                        # Unfortunately platform support for no-padding is implementation-dependent,
-                        # so it's not exact
-                        field_value = time.strftime("%m/%d/%Y %I:%M:%S %p", field_value)
-                elif attr_name in ["play_count", "skip_count"]:
-                    # If no playcount or skipcount field exists, that's equivalent
-                    # to 0 playcount/skipcount
-                    if field_value == None:
-                        field_value = 0
-                elif attr_name in ["start_time", "stop_time"]:
-                    # The result is always rounded down to an integer (regardless of what
-                    # the actual value in msec is).
-                    #
-                    # If no stop or start time has been set, either 0 (for start time)
-                    # or the length of the song in seconds (for stop time) is printed out.
-                    if field_value == None:
-                        if attr_name == "start_time":
-                            field_value = 0
-                        else:
-                            field_value = song.total_time // 100
-                    else:
-                        field_value = field_value // 100
-                else:
-                    if field_value == None:
-                        field_value = ""
-
-                fp.write(f"<{field}>{field_value}\n")
-
-            # Separating newline
-            fp.write("\n")
+    # Process all songs within the given library
+    for _, song in lib.songs.items():
+        add_to_exportimport(song, selected_fields, output_path)
 
     logger.info(f"ExportImport write complete")
-
+    
 # endregion
 
 def create_backup(file_path, output_folder='backups'):

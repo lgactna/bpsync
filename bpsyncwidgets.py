@@ -717,8 +717,6 @@ class SongWorker(QtCore.QRunnable):
 
                 song = self.lib.songs[track_id]
 
-                logger.info(f"Processing {song.name} ({song.persistent_id})")
-
                 # a "future" is basically a promise from the executor that it will run it,
                 # you can go do other things, and 
                 future = executor.submit(bpsynctools.copy_and_process_song, song)
@@ -730,6 +728,8 @@ class SongWorker(QtCore.QRunnable):
                 # grab song associated with future, apparently you can't get the args from
                 # futures
                 song = future_args[future]
+
+                logger.info(f"Processed {song.name} ({song.persistent_id})")
 
                 # we don't want to emit until the song is actually done, should rename
                 # this signal one day
@@ -796,9 +796,10 @@ class StandardWorker(SongWorker):
             # Update existing entries from the songs_changed_table
             for row in self.songs_changed_data:            
                 track_id = row[0]
-                xml_plays = row[5]
-                bp_plays = row[6]
-                persistent_id = row[9]
+                reprocess = row[1]
+                xml_plays = row[6]
+                bp_plays = row[7]
+                persistent_id = row[10]
 
                 # get database entry
                 db_song = session.query(models.StoredSong).filter(models.StoredSong.persistent_id==persistent_id).scalar()
@@ -806,19 +807,23 @@ class StandardWorker(SongWorker):
                 
                 # update library entry and database
                 # note that the library entry already includes the extra xml plays, so we just do last_playcount+delta
-                self.lib.songs[track_id].play_count = db_song.last_playcount + delta
+                total_plays = db_song.last_playcount + delta
+                self.lib.songs[track_id].play_count = total_plays
                 
                 # at this point, we can use the library entry to update everything
                 # since the delta is already reflected in the libpytunes song
-                db_song.update_from_libpy_song(self.lib.songs[track_id])
+                if delta != 0 or reprocess > 0:
+                    db_song.update_from_libpy_song(self.lib.songs[track_id])
 
-                # write out to bpstat
-                bpsynctools.add_to_bpstat(self.lib.songs[track_id], self.bpstat_prefix, self.bpstat_path)
-                bpsynctools.add_to_exportimport(db_song, self.exportimport_path)
+                # write out to bpstat and exportimport
+                if bp_plays != total_plays:
+                    bpsynctools.add_to_bpstat(self.lib.songs[track_id], self.bpstat_prefix, self.bpstat_path)
+                if xml_plays != total_plays:
+                    bpsynctools.add_to_exportimport(self.lib.songs[track_id], ["Plays"], self.exportimport_path)
 
             # Remove previously ignored songs if applicable
             for track_id in self.tracking_ids:
-                lib_song_id = lib.songs[track_id].persistent_id
+                lib_song_id = self.lib.songs[track_id].persistent_id
                 ignored_song = session.query(models.IgnoredSong).filter(models.IgnoredSong.persistent_id==persistent_id).scalar()
                 if ignored_song:
                     ignored_song.delete()
@@ -827,10 +832,12 @@ class StandardWorker(SongWorker):
             # commit changes
             session.commit()
 
+        '''
+        # xml file is no longer used
         # Write out updated library to xml
         xml_path = os.path.join(self.data_directory, f"{self.root_name}.xml")
         self.lib.writeToXML(xml_path)
-
+        '''
         super().run()
 
 
