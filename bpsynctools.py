@@ -9,6 +9,7 @@ import logging
 import hashlib
 import time
 import xml
+import re
 
 from collections import namedtuple
 from shutil import copy2
@@ -21,6 +22,7 @@ from PySide6 import QtWidgets
 from pydub import AudioSegment
 from pydub.utils import mediainfo
 from eyed3 import load
+from mutagen.easyid3 import EasyID3
 import sqlalchemy.orm.exc
 import libpytunes
 
@@ -62,7 +64,7 @@ def copy_and_process_song(song, output_folder='tmp'):
     this output folder is `/tmp` relative to the run location.
 
     If the Song object is not an mp3 file or has been trimmed, the song is processed using
-    pydub and requires ffmpeg/libav.
+    ffmpeg/libav.
     """
     # affirm output_folder (and any parent folders, if specified) exists, and make it if it doesn't exist
     # https://docs.python.org/3/library/pathlib.html#pathlib.Path.mkdir
@@ -74,31 +76,58 @@ def copy_and_process_song(song, output_folder='tmp'):
 
     try:
         if file_extension != ".mp3" or song.start_time or song.stop_time or song.volume_adjustment:
-            logger.info(f"{song.persistent_id} needs to be processed by pydub ({output_path})")
-            obj = AudioSegment.from_file(song.location)
+            logger.info(f"{song.persistent_id} needs to be processed by ffmpeg ({output_path})")
+            ffmpeg = ['ffmpeg', '-loglevel', 'fatal', '-y', '-i', song.location]
 
-            if song.start_time or song.stop_time:
-                start_time = 0 if not song.start_time else song.start_time
-                stop_time = len(obj) if not song.stop_time else song.stop_time
+            if song.start_time:
+                ffmpeg += ['-ss', f'{song.start_time / 1000:g}']
+                logger.info(f"Trimmed Start {song.persistent_id}")
 
-                obj = obj[start_time:stop_time]
-
-                logger.info(f"Trimmed {song.persistent_id}")
+            if song.stop_time:
+                ffmpeg += ['-to', f'{song.stop_time / 1000:g}']
+                logger.info(f"Trimmed End {song.persistent_id}")
             
-            if song.volume_adjustment:
+            # avoid reencoding for insignificant volume changes. values can be adjusted if need be
+            if song.volume_adjustment and (song.volume_adjustment < -2 or song.volume_adjustment > 2):
                 # internally stored as an integer between -255 and 255
                 # but can physically be adjusted past 255
-                if song.volume_adjustment <= -255:
-                    obj = obj - 100  # essentially silent
-                    logger.warning(f"The song {song.name} has a volume adjustment value less than -255 and is silent!")
-                else:
-                    gain_factor = (song.volume_adjustment + 255)/255
-                    decibel_change = 10 * log10(gain_factor)
-                    obj = obj + decibel_change
-                    logger.info(f"Changed {song.name} gain factor by {gain_factor} ({decibel_change} dB)")
+                gain_factor = (song.volume_adjustment + 255)/255
+                decibel_change = 20 * log10(gain_factor)
 
-            # tags parameter is used for retaining metadata
-            obj.export(output_path, format="mp3", tags=mediainfo(song.location)['TAG'])
+                # run ffmpeg once to detect peak dB of song. this costs ~0.4s per file, but solves clipping distortion
+                # non-windows os should use '/dev/null' in place of 'NUL' in the ffmpeg parameters below
+                ffmpeg_pipe = subprocess.run(['ffmpeg', '-i', song.location, '-af', 'volumedetect', '-vn', '-sn', '-dn', '-f', 'null', 'NUL'], stdout=subprocess.PIPE, stderr=subprocess.STDOUT)
+                ffmpeg_pipe = re.search(r"max_volume: (\S+) dB", str(ffmpeg_pipe))
+                if ffmpeg_pipe is not None:
+                    decibel_peak = float(ffmpeg_pipe.group(1))
+                
+                if ffmpeg_pipe is not None and decibel_peak + decibel_change > 0:
+                    # technically acompressor would be more accurate here, but im too lazy to implement it and alimiter is close enough
+                    # TODO: consider lowering alimiter 'attack' to 1 (ms) (default is 5 ms)
+                    # TODO: implement acompressor instead
+                    ffmpeg += ['-af', f'alimiter=limit={-decibel_change}dB']
+                else:
+                    ffmpeg += ['-af', f'volume={decibel_change}dB']
+                logger.info(f"Changed {song.name} gain factor by {gain_factor} ({decibel_change} dB)")
+
+            # volume changes/mp3 conversions require reencoding
+            if file_extension != ".mp3" or song.volume_adjustment:
+                ffmpeg += ['-q:a', '0']
+            else:
+                ffmpeg += ['-c', 'copy']
+            ffmpeg += ['-id3v2_version', '3', output_path]
+
+            subprocess.run(ffmpeg)
+
+            # '-ss' throws away any data before the timestamp which includes
+            # the thumbnail, so it must be readded and reprocessed, but
+            # `-c copy` is fast, so speed shouldn't be significantly affected
+            if song.start_time:
+                temp_output = os.path.join(output_folder, song.persistent_id + "_temp.mp3")
+                subprocess.run(['ffmpeg', '-loglevel', 'fatal', '-y', '-i', song.location, '-i', output_path, '-map', '0:v:0', '-map', '1:a:0', '-c', 'copy', '-id3v2_version', '3', temp_output])
+                # ffmpeg can't write over itself, so a temp file
+                # must be made and then replaced afterwards
+                os.replace(temp_output, output_path)
         else:
             logger.info(f"{song.persistent_id} does not need to be processed and was directly copied ({output_path})")
             copy2(song.location, output_path)
@@ -114,12 +143,11 @@ def strip_semicolons(song_path):
 
     This check is used to prevent .bpstat files from failing to import.
     """
-    # TODO: check if this actually works
-    out_file = load(song_path)
-    for field in [out_file.tag.artist, out_file.tag.title, out_file.tag.album]:
-        field = field.replace(";", "")
+    out_file = EasyID3(song_path)
+    for field_name in ["title", "artist", "album"]:
+        out_file[field_name] = [out_file[field_name][0].replace(";", ";")]
 
-    out_file.tag.save(version=(2,3,0))
+    out_file.save()
 
 def check_for_semicolons(song):
     """
@@ -130,8 +158,7 @@ def check_for_semicolons(song):
 
     for field in [song.artist, song.name, song.album]:
         if field and ";" in field:
-            logger.warning(f"Semicolon detected in {song.name=} ({song.persistent_id=})! "
-                         f"This can cause .bpstat imports to fail.")
+            logger.warning(f"Semicolon detected in {song.name=} ({song.persistent_id=})")
             return True
     return False
 
@@ -149,13 +176,13 @@ def add_to_bpstat(song, bpstat_prefix, bpstat_path):
     with open(bpstat_path, "ab") as fp:
         fp.write(output.encode('utf-8'))
 
-def add_to_exportimport(lib, selected_fields, output_path):
+def add_to_exportimport(song, selected_fields, output_path):
     """
     Append a song to a line in the specified text file.
 
     For use with https://samsoft.org.uk/iTunes/scripts.asp#ExportImport.
     
-    :param lib: The libpytunes library to use.
+    :param song: The libpytunes song to add.
     :param selected_fields: A list of strings with the field names.
     :param output_path: The full location of the txt file to use.
     """
@@ -191,70 +218,84 @@ def add_to_exportimport(lib, selected_fields, output_path):
         "Finish": "stop_time",
     }
 
-    logger.info(f"Attempting write of ExportImport file with fields {selected_fields}")
+    # This adds the BOM if needed
+    # ExportImport files are in utf-16, *not* utf-8
+    with open(output_path, "a", encoding="utf-16") as fp:
+        fp.write(f"<ID>{song.persistent_id[0:8]}-{song.persistent_id[8:16]}\n")
+        
+        for field in selected_fields:
+            try:
+                attr_name = attrs[field]
+            except KeyError:
+                logger.error(f"Tried to look up {field}, but it doesn't exist in the available fields; skipping")
+                continue
+        
+            try:
+                field_value = getattr(song, attr_name)
+            except AttributeError:
+                logger.error(f"Song object doesn't have attribute {attr_name}? (programming error)")
+                continue
 
+            # Special processing for specific fields
+            if attr_name in ["date_added", "skip_date", "lastplayed"]:
+                # If no date is set, then default to "12:00:00 AM"
+                if field_value == None:
+                    field_value = "12:00:00 AM"
+                else:
+                    # If a date is set, convert it to the format 1/6/2022 5:32:11 PM
+                    # Unfortunately platform support for no-padding is implementation-dependent,
+                    # so it's not exact
+                    field_value = time.strftime("%m/%d/%Y %I:%M:%S %p", field_value)
+            elif attr_name in ["play_count", "skip_count"]:
+                # If no playcount or skipcount field exists, that's equivalent
+                # to 0 playcount/skipcount
+                if field_value == None:
+                    field_value = 0
+            elif attr_name in ["start_time", "stop_time"]:
+                # The result is always rounded down to an integer (regardless of what
+                # the actual value in msec is).
+                #
+                # If no stop or start time has been set, either 0 (for start time)
+                # or the length of the song in seconds (for stop time) is printed out.
+                if field_value == None:
+                    if attr_name == "start_time":
+                        field_value = 0
+                    else:
+                        field_value = song.total_time // 100
+                else:
+                    field_value = field_value // 100
+            else:
+                if field_value == None:
+                    field_value = ""
+
+            fp.write(f"<{field}>{field_value}\n")
+
+        # Separating newline
+        fp.write("\n")
+
+def lib_to_exportimport(lib, selected_fields, output_path):
+    """
+    Process an entire library through add_to_exportimport().
+
+    For use with https://samsoft.org.uk/iTunes/scripts.asp#ExportImport.
+    
+    :param lib: The libpytunes library to use.
+    :param selected_fields: A list of strings with the field names.
+    :param output_path: The full location of the txt file to use.
+    """
+
+    logger.info(f"Attempting write of ExportImport file with fields {selected_fields}")
+    
     # Overwrite the file if needed
     with open(output_path, "w", encoding="utf-16") as fp:
         fp.write("")
 
-    # This adds the BOM if needed
-    # ExportImport files are in utf-16, *not* utf-8
-    with open(output_path, "a", encoding="utf-16") as fp:
-        for _, song in lib.songs.items():
-            fp.write(f"<ID>{song.persistent_id[0:8]}-{song.persistent_id[8:16]}\n")
-            
-            for field in selected_fields:
-                try:
-                    attr_name = attrs[field]
-                except KeyError:
-                    logger.error(f"Tried to look up {field}, but it doesn't exist in the available fields; skipping")
-                    continue
-            
-                try:
-                    field_value = getattr(song, attr_name)
-                except AttributeError:
-                    logger.error(f"Song object doesn't have attribute {attr_name}? (programming error)")
-                    continue
-
-                # Special processing for specific fields
-                if attr_name in ["date_added", "skip_date", "lastplayed"]:
-                    # If no date is set, then default to "12:00:00 AM"
-                    if field_value == None:
-                        field_value = "12:00:00 AM"
-                    else:
-                        # If a date is set, convert it to the format 1/6/2022 5:32:11 PM
-                        # Unfortunately platform support for no-padding is implementation-dependent,
-                        # so it's not exact
-                        field_value = time.strftime("%m/%d/%Y %I:%M:%S %p", field_value)
-                elif attr_name in ["play_count", "skip_count"]:
-                    # If no playcount or skipcount field exists, that's equivalent
-                    # to 0 playcount/skipcount
-                    if field_value == None:
-                        field_value = 0
-                elif attr_name in ["start_time", "stop_time"]:
-                    # The result is always rounded down to an integer (regardless of what
-                    # the actual value in msec is).
-                    #
-                    # If no stop or start time has been set, either 0 (for start time)
-                    # or the length of the song in seconds (for stop time) is printed out.
-                    if field_value == None:
-                        if attr_name == "start_time":
-                            field_value = 0
-                        else:
-                            field_value = song.total_time // 100
-                    else:
-                        field_value = field_value // 100
-                else:
-                    if field_value == None:
-                        field_value = ""
-
-                fp.write(f"<{field}>{field_value}\n")
-
-            # Separating newline
-            fp.write("\n")
+    # Process all songs within the given library
+    for _, song in lib.songs.items():
+        add_to_exportimport(song, selected_fields, output_path)
 
     logger.info(f"ExportImport write complete")
-
+    
 # endregion
 
 def create_backup(file_path, output_folder='backups'):
@@ -345,24 +386,39 @@ def standard_sync_arrays_from_data(library, bpstat_songs, calculate_file_hashes)
         # check if the song exists in both the bpstat and the database
         try:
             stored_song = session.query(models.StoredSong).filter(models.StoredSong.persistent_id==song.persistent_id).scalar()
-            bpstat_song = bpsongs[song.persistent_id]
+            bpstat_song = bpsongs.get(song.persistent_id, None)
 
-            if not stored_song:
-                raise KeyError()  # same behavior as bpstat_song throwing a KeyError upon no result found
+            if not stored_song and bpstat_song is not None:
+                # This should only ever happen due to user error
+                logger.error(f"{song.persistent_id} exists in bpstat but not in the database")
+                continue
+            elif not stored_song and bpstat_song is None:
+                # The song doesn't exist in the StoredSong and wasn't in the bpstat.
+                # Check if the song was previously ignored (i.e.) a corresponding IgnoredSong entry exists.
+                # If so, then do not attempt to add it to the new song table.
+                logger.info(f"{song.name} ({song.persistent_id}) is a new song")
+                ignored_song = session.query(models.IgnoredSong).filter(
+                    models.IgnoredSong.persistent_id == song.persistent_id).scalar()
+
+                if not ignored_song:
+                    new_songs[track_id] = song
+
+                # In all cases, since the song is not being tracked, move on to the next song.
+                continue
+            elif stored_song and bpstat_song is None:
+                # The song doesn't exist in the bpstat but exists in the StoredSong.
+                # This happens since Blackplayer doesn't export tracks with 0 plays into bpstat.
+                assert stored_song.last_playcount == 0, f"{song.name} ({song.persistent_id}) has a playcount higher than 0 but does not appear within bpstat"
+                logger.info(f"{song.name} ({song.persistent_id}) is already in the database but isn't in bpstat")
+                # Songs with 0 plays in bpstat should have no changes and don't need a checkbox
+                reprocess = -1
+                existing_songs_rows.append([track_id, reprocess, song.name, song.artist, song.album, stored_song.last_playcount, 0,
+                                        0, 0, stored_song.last_playcount, song.persistent_id])
+                continue
+            else:
+                pass
         except sqlalchemy.orm.exc.MultipleResultsFound:
             logger.error("Database has multiple entries of the same ID?")
-            continue
-        except KeyError:
-            # The song doesn't exist in the StoredSong or wasn't in the bpstat.
-            # Check if the song was previously ignored (i.e.) a corresponding IgnoredSong entry exists.
-            # If so, then do not attempt to add it to the new song table.
-            ignored_song = session.query(models.IgnoredSong).filter(
-                models.IgnoredSong.persistent_id == song.persistent_id).scalar()
-
-            if not ignored_song:
-                new_songs[track_id] = song
-
-            # In all cases, since the song is not being tracked, move on to the next song.
             continue
 
         # if it gets here, then the song is being tracked

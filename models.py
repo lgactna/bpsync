@@ -144,11 +144,11 @@ class StoredSong(Base):
         # (i.e., track number will not suddenly stop being an ID3 tag)
 
         fields_to_test = ["start_time", "stop_time", "disc_number", "disc_count",
-                          "track_number", "track_count", "year", "bit_rate",
-                          "sample_rate", "volume_adjustment", "compilation", 
-                          "track_type", "name", "artist", "album_artist", 
-                          "composer", "album", "grouping", "genre", 
-                          "kind", "sort_album", "work", "movement_name",
+                          "track_number", "year", "bit_rate", "sample_rate",
+                          "volume_adjustment", "compilation", "track_type",
+                          "name", "artist", "album_artist", "composer",
+                          "album", "grouping", "genre", "kind",
+                          "sort_album", "work", "movement_name",
                           "movement_number", "movement_count"]
 
         for field_name in fields_to_test:

@@ -19,6 +19,8 @@ import libpytunes
 import bpsynctools
 import models
 
+import concurrent.futures
+
 from progress import Ui_ProcessingProgress
 from song_info import Ui_SongInfoDialog
 
@@ -66,7 +68,7 @@ class CheckBoxDelegate(QtWidgets.QItemDelegate):
         flag enabled, call setModelData(). This means that any rows in a checkbox
         column where ItemIsEditable is not set will not be updated at all.
         """
-        if not int(index.flags() & QtCore.Qt.ItemIsEditable) > 0:
+        if not (index.flags() & QtCore.Qt.ItemIsEditable):
             return False
         if event.type() == QtCore.QEvent.Type.MouseButtonRelease and event.button() == Qt.MouseButton.LeftButton:
             # Change the checkbox-state
@@ -292,7 +294,7 @@ class SongTableModel(QAbstractTableModel):
 
         # Note: index must be relative to the source model, not the proxy model!
         # Callers are responsible for mapping it ahead of time!
-        if role == Qt.EditRole and int(index.flags() & QtCore.Qt.ItemIsEditable) > 0:
+        if role == Qt.EditRole and (index.flags() & QtCore.Qt.ItemIsEditable):
             old_data = self.array_data[index.row()][index.column()]
             self.array_data[index.row()][index.column()] = value
 
@@ -699,19 +701,39 @@ class SongWorker(QtCore.QRunnable):
             bpsynctools.add_to_bpstat(song, self.bpstat_prefix, self.bpstat_path)
             song_arr.append(song)
 
-        for index, track_id in enumerate(self.processing_ids):
-            # Check for thread stop
-            if self.stop_flag:
-                logger.info("SongWorker thread was stopped during song processing")
-                self.signal_connection.songStartedProcessing.emit(index, f"Processing stopped - you can close this window.")
-                return
+        futures = []
+        future_args: "dict[concurrent.futures.Future, libpytunes.Song]" = {}
+        with concurrent.futures.ProcessPoolExecutor() as executor:
+            # spin all individual processors up
+            for index, track_id in enumerate(self.processing_ids):
+                # Check for thread stop (note that already launched processes will likely
+                # stay alive)
+                if self.stop_flag:
+                    logger.info("SongWorker thread was stopped during song processing")
+                    self.signal_connection.songStartedProcessing.emit(index, f"Processing stopped - you can close this window.")
 
-            song = self.lib.songs[track_id]
+                    # may cause very bad things to happen?
+                    return
 
-            logger.info(f"Processing {song.name} ({song.persistent_id})")
-            self.signal_connection.songStartedProcessing.emit(index + 1, f"{song.artist} - {song.name}")
+                song = self.lib.songs[track_id]
 
-            bpsynctools.copy_and_process_song(song)
+                # a "future" is basically a promise from the executor that it will run it,
+                # you can go do other things, and 
+                future = executor.submit(bpsynctools.copy_and_process_song, song)
+                future_args[future] = song
+                
+                futures.append(future)
+
+            for index, future in enumerate(concurrent.futures.as_completed(futures)):
+                # grab song associated with future, apparently you can't get the args from
+                # futures
+                song = future_args[future]
+
+                logger.info(f"Processed {song.name} ({song.persistent_id})")
+
+                # we don't want to emit until the song is actually done, should rename
+                # this signal one day
+                self.signal_connection.songStartedProcessing.emit(index + 1, f"{song.artist} - {song.name}")
 
         # Setting the progress window number progress to max disables the cancel button
         self.signal_connection.songStartedProcessing.emit(len(self.processing_ids), f"Writing database - this may take some time")
@@ -774,9 +796,10 @@ class StandardWorker(SongWorker):
             # Update existing entries from the songs_changed_table
             for row in self.songs_changed_data:            
                 track_id = row[0]
-                xml_plays = row[5]
-                bp_plays = row[6]
-                persistent_id = row[9]
+                reprocess = row[1]
+                xml_plays = row[6]
+                bp_plays = row[7]
+                persistent_id = row[10]
 
                 # get database entry
                 db_song = session.query(models.StoredSong).filter(models.StoredSong.persistent_id==persistent_id).scalar()
@@ -784,19 +807,23 @@ class StandardWorker(SongWorker):
                 
                 # update library entry and database
                 # note that the library entry already includes the extra xml plays, so we just do last_playcount+delta
-                self.lib.songs[track_id].play_count = db_song.last_playcount + delta
+                total_plays = db_song.last_playcount + delta
+                self.lib.songs[track_id].play_count = total_plays
                 
                 # at this point, we can use the library entry to update everything
                 # since the delta is already reflected in the libpytunes song
-                db_song.update_from_libpy_song(self.lib.songs[track_id])
+                if delta != 0 or reprocess > 0:
+                    db_song.update_from_libpy_song(self.lib.songs[track_id])
 
-                # write out to bpstat
-                bpsynctools.add_to_bpstat(self.lib.songs[track_id], self.bpstat_prefix, self.bpstat_path)
-                bpsynctools.add_to_exportimport(db_song, self.exportimport_path)
+                # write out to bpstat and exportimport
+                if bp_plays != total_plays:
+                    bpsynctools.add_to_bpstat(self.lib.songs[track_id], self.bpstat_prefix, self.bpstat_path)
+                if xml_plays != total_plays:
+                    bpsynctools.add_to_exportimport(self.lib.songs[track_id], ["Plays"], self.exportimport_path)
 
             # Remove previously ignored songs if applicable
             for track_id in self.tracking_ids:
-                lib_song_id = lib.songs[track_id].persistent_id
+                lib_song_id = self.lib.songs[track_id].persistent_id
                 ignored_song = session.query(models.IgnoredSong).filter(models.IgnoredSong.persistent_id==persistent_id).scalar()
                 if ignored_song:
                     ignored_song.delete()
@@ -805,10 +832,12 @@ class StandardWorker(SongWorker):
             # commit changes
             session.commit()
 
+        '''
+        # xml file is no longer used
         # Write out updated library to xml
         xml_path = os.path.join(self.data_directory, f"{self.root_name}.xml")
         self.lib.writeToXML(xml_path)
-
+        '''
         super().run()
 
 
